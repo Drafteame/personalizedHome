@@ -139,6 +139,9 @@ export function BetSlipFullSheet({
 
   useEffect(() => {
     if (isPresent) {
+      // Opaque on open so the growing capsule covers the pill/slip behind it —
+      // the card must never let the bet slip show through as it grows.
+      cardOpacity.set(1);
       const a = animate(openP, 1, OPEN_SPRING);
       return () => a.stop();
     }
@@ -149,6 +152,11 @@ export function BetSlipFullSheet({
     scaleY.set(CLOSE_PULSE_SCALE_Y);
     const px = animate(scaleX, 1, PULSE_SPRING);
     const py = animate(scaleY, 1, PULSE_SPRING);
+    // Fade the card out only over the LAST stretch of the close (openP < 0.12)
+    // so the real pill's content is revealed as the capsule reaches pill size.
+    const unsub = openP.on('change', (v) => {
+      cardOpacity.set(Math.min(1, v / 0.12));
+    });
     const a = animate(openP, 0, OPEN_SPRING);
     let done = false;
     a.then(() => {
@@ -161,6 +169,7 @@ export function BetSlipFullSheet({
       a.stop();
       px.stop();
       py.stop();
+      unsub();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPresent]);
@@ -179,11 +188,12 @@ export function BetSlipFullSheet({
   // Position morph — lift the card up to the pill's line as it shrinks (only
   // over the small end, so the full card stays anchored at the navbar line).
   const morphY = useTransform(openP, [0, 0.5], [-PILL_RISE_PX, 0]);
-  // Cross-fade the whole card against the real pill behind it at the very ends
-  // of the morph. On close this reveals the pill's CONTENT as the card fades
-  // (fixes the "empty pill" gap where the bare capsule covered the pill); on
-  // open the card fades in from the pill. Fast so it reads as a clean handoff.
-  const cardOpacity = useTransform(openP, [0, 0.12], [0, 1]);
+  // Card opacity — DIRECTIONAL. On OPEN it stays 1 (opaque) so the growing
+  // capsule covers the pill/slip behind it (otherwise a symmetric crossfade
+  // would let the bet slip show THROUGH the card as it fades in). On CLOSE it's
+  // driven down from openP (see the effect) so the real pill's CONTENT is
+  // revealed as the capsule fades — the "empty pill" fix.
+  const cardOpacity = useMotionValue(1);
   // Squash-&-stretch pulse (scale), applied on the wrapper on close.
   const scaleX = useMotionValue(1);
   const scaleY = useMotionValue(1);

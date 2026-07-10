@@ -10,6 +10,7 @@ import reusarIcon from './assets/reusar.svg';
 import { BetSlipFullSheet } from './BetSlipFullSheet';
 import { BetSlipSheet } from './BetSlipSheet';
 import { EntryCreatedOverlay } from './EntryCreatedOverlay';
+import { SuccessEntrySheet } from './SuccessEntrySheet';
 import type { Selection, Tier } from './types';
 
 // Lightning bet: how long the pressed pick shows its selected state before the
@@ -112,6 +113,12 @@ export function App() {
   // Swipe-to-confirm success sequence: green "Entrada creada" card + ticket
   // fly into Mis entradas, then the "¿Reusar?" prompt + count badge.
   const [success, setSuccess] = useState(false);
+  // NEW success flow (swipe-to-confirm from the summarized slip OR the floating
+  // card): opens the "¡Entrada creada!" SuccessEntrySheet instead of the flying
+  // ticket. The selections stay mounted so the sheet can list them; they're
+  // cleared on "Entrada nueva" and kept on "Reusar". (Lightning still uses the
+  // ticket via `success`.)
+  const [entrySheet, setEntrySheet] = useState(false);
   // Lightning bet in progress — the pressed pick is added (so its button shows
   // the selected state) but the slip is suppressed; the entry is created a
   // beat later. See lightningBet().
@@ -248,11 +255,32 @@ export function App() {
   // Place the bet from the semi-expanded slip (swipe-to-confirm). Prototype
   // behavior: clear the slip, as a placed bet would. Wire to real
   // bet-placement here when a backend exists.
-  // Swipe-to-confirm → play the success animation (slip hidden behind the
-  // green overlay via `success`). The overlay's onDone finishes the sequence.
+  // Swipe-to-confirm (summarized slip OR floating card) → open the new
+  // "¡Entrada creada!" success sheet. The floating card (if open) closes and the
+  // slip collapses; the success sheet grows out of the slip footprint. The
+  // selections stay mounted so the sheet can list them.
   const confirmBet = useCallback(() => {
     setListOpen(false);
-    setSuccess(true);
+    setExpanded(false);
+    setEntrySheet(true);
+  }, []);
+
+  // Entrada nueva / swipe-down / backdrop-tap on the success sheet → record the
+  // entry, clear the slip, and return Home.
+  const successNewEntry = useCallback(() => {
+    setEntrySheet(false);
+    setSelections([]);
+    setExpanded(false);
+    setEntryCount((c) => c + 1);
+    setEntryBump((n) => n + 1);
+  }, []);
+
+  // Reusar → record the entry but KEEP the selections so a fresh slip rebuilds
+  // (the sheet shrinks back into the re-mounted pill).
+  const successReuse = useCallback(() => {
+    setEntrySheet(false);
+    setEntryCount((c) => c + 1);
+    setEntryBump((n) => n + 1);
   }, []);
 
   // LIGHTNING STRAIGHT BET — long-press a pick to create the entry instantly.
@@ -306,6 +334,15 @@ export function App() {
     }
     return s;
   }, [selections]);
+
+  // Whether the bet slip (collapsed pill OR expanded summarized card) is on
+  // screen. Drives BOTH the slip mount and the size of the dark gradient
+  // behind the navbar: the gradient only needs to extend up far enough to
+  // separate the slip from the content when the slip is present. When it's
+  // absent, the reserved slot collapses so the gradient shrinks to just the
+  // navbar band.
+  const betSlipVisible =
+    selections.length > 0 && !lightning && !success && !entrySheet;
 
   /* ============================================================ */
   /*  Render                                                      */
@@ -498,6 +535,15 @@ export function App() {
                   >
                     Animation speed: {speedScale === 1 ? '1× normal' : '3× slow'}
                   </button>
+                  {/* Debug — fire the swipe-to-confirm success flow without the
+                      drag gesture (opens the SuccessEntrySheet). */}
+                  <button
+                    onClick={confirmBet}
+                    disabled={selections.length === 0}
+                    className="mt-1.5 w-full rounded-md bg-emerald-500/80 px-2 py-1.5 text-[11px] font-bold text-black disabled:opacity-40"
+                  >
+                    ▶ Simular confirmación
+                  </button>
                   {/* PASS 3 — Tier 3 odds effect variant toggle. */}
                   <button
                     onClick={() =>
@@ -593,12 +639,20 @@ export function App() {
                   transition: 'background 700ms ease-out',
                 }}
               >
-                {/* Reserved-height slot — keeps navbar pinned regardless
-                    of whether the slip is mounted. */}
+                {/* Reserved-height slot. The slip is anchored to its BOTTOM
+                    (against the navbar), so this height only controls how far
+                    the dark gradient extends ABOVE the slip. It reserves the
+                    full height while the slip (or the post-success prompt) is
+                    on screen — giving the gradient enough reach to separate
+                    the slip from the content — and collapses to 0 otherwise so
+                    the gradient shrinks to just the navbar band. */}
                 <div
-                  className="relative"
+                  className="relative transition-[height] duration-300 ease-out"
                   style={{
-                    height: buttonProgressionConfig.slotReservedHeightPx,
+                    height:
+                      betSlipVisible || promptMounted
+                        ? buttonProgressionConfig.slotReservedHeightPx
+                        : 0,
                   }}
                 >
                   {/* BET SLIP — a single morphing sheet (collapsed pill ↔
@@ -609,7 +663,7 @@ export function App() {
                       element ever exists, so nothing shows behind it. */}
                   <div className="absolute inset-x-0 bottom-0 z-10">
                     <AnimatePresence>
-                      {selections.length > 0 && !lightning && !success && (
+                      {betSlipVisible && (
                         <BetSlipSheet
                           key="bet-slip-sheet"
                           selections={selections}
@@ -712,13 +766,29 @@ export function App() {
 
             {/* Swipe-to-confirm success — green "Entrada creada" card that
                 flies into Mis entradas, then finishEntryCreated() pops the
-                badge + "¿Reusar?" prompt. */}
+                badge + "¿Reusar?" prompt. Used ONLY by the lightning bet now;
+                swipe-to-confirm opens the SuccessEntrySheet below. */}
             {success && (
               <EntryCreatedOverlay
                 onCatch={() => setEntryBump((n) => n + 1)}
                 onDone={finishEntryCreated}
               />
             )}
+
+            {/* "¡Entrada creada!" success sheet — opened by swipe-to-confirm
+                from the summarized slip or the floating card. Grows out of the
+                slip footprint (same morph as BetSlipFullSheet). */}
+            <AnimatePresence>
+              {entrySheet && selections.length > 0 && (
+                <SuccessEntrySheet
+                  key="success-entry-sheet"
+                  selections={selections}
+                  cumulativeOdds={cumulativeOdds}
+                  onNewEntry={successNewEntry}
+                  onReuse={successReuse}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Debug overlay (tier badge + live ambient phases) */}
             {debug && (

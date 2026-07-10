@@ -2,9 +2,9 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  // Served from https://drafteame.github.io/one-click-bet/
+  // Served from https://drafteame.github.io/success-floating-card/
   // — assets must be prefixed with the repo name so they resolve.
-  base: '/one-click-bet/',
+  base: '/success-floating-card/',
   plugins: [react()],
   server: {
     // `host: true` binds to 0.0.0.0 so the dev server is reachable from

@@ -1,0 +1,547 @@
+import {
+  animate,
+  motion,
+  useDragControls,
+  useMotionValue,
+  usePresence,
+  useTransform,
+  type PanInfo,
+} from 'framer-motion';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import logoDraftea from './assets/logo-draftea.svg';
+import reuseIcon from './assets/reuse.svg';
+import shareIcon from './assets/share.svg';
+import shieldIcon from './assets/shield.svg';
+import successIllustration from './assets/success-illustration.svg';
+import ticketHeaderBg from './assets/ticket-header-bg.svg';
+import type { Selection } from './types';
+
+/**
+ * SuccessEntrySheet — the "¡Entrada creada!" confirmation card (Figma
+ * `profileBottomSheet` 33938:331674).
+ *
+ * Shown after a successful swipe-to-confirm (from the summarized bet slip OR
+ * the "Resumen" floating card) — it REPLACES the old flying-ticket success
+ * animation for those two flows (lightning long-press still uses the ticket).
+ *
+ * A bottom-anchored floating card that reuses the EXACT pill↔card morph from
+ * BetSlipFullSheet: an `openP` motion value drives a bottom-up clip-path reveal
+ * (from a `START_H` pill-sized capsule up to the measured full height) plus a
+ * content + backdrop crossfade and a fill/border morph to the purple pill at
+ * the small end — so summarized slip → pill → this card all read as ONE surface
+ * changing shape. Close reverses `openP` to 0 (shrinks back into the pill).
+ *
+ * Content: green success glow, handle, header (green check illustration +
+ * "¡ENTRADA CREADA!" + ganancia / entrada / momio), a DRAFTEA divider, the
+ * placed selections list (scrolls internally when capped below the header), and
+ * the action buttons — Compartir (primary), then Reusar + Entrada nueva.
+ *
+ * Actions:
+ *   • Entrada nueva / swipe-down / backdrop-tap → close + return Home (onNewEntry).
+ *   • Reusar → close but keep the selections so a fresh slip rebuilds (onReuse).
+ *   • Compartir → visual only for now.
+ */
+
+const STAKE = 200;
+const fmtOdds = (n: number) => `${n.toFixed(2)}x`;
+
+const CLOSE_OFFSET_PX = 120;
+const CLOSE_VELOCITY = 550;
+// Same open/close morph as BetSlipFullSheet — the card GROWS out of the
+// bet-slip footprint (bottom-up clip-path reveal) rather than sliding in.
+const OPEN_SPRING = { type: 'spring', stiffness: 340, damping: 36 } as const;
+const CLOSE_PULSE_SCALE_X = 1.03;
+const CLOSE_PULSE_SCALE_Y = 0.95;
+const PULSE_SPRING = { type: 'spring', stiffness: 300, damping: 16 } as const;
+// Reveal starts at the collapsed-pill capsule height (matches BetSlipSheet's
+// COLLAPSED_GLASS_H) so the card appears to grow straight out of the pill.
+const START_H = 56;
+// The card sits at the navbar line; the pill sits ~this many px higher. As the
+// card shrinks to the capsule it rises by this much to land ON the pill.
+const PILL_RISE_PX = 62;
+// The app header (sticky topbar, ~88px) must stay visible — the card can never
+// grow past this line. Only bounds MAX height; small cards stay bottom-anchored.
+const TOP_INSET_PX = 96;
+// Bottom gap so the card's lower edge lines up with the navbar.
+const BOTTOM_GAP_PX = 16;
+// Max card height — 470px, but never more than half the screen on shorter
+// devices. Content shorter than this stays content-height (bottom-anchored);
+// taller entries hit the cap and scroll the selections list internally.
+const MAX_CARD_H = 'min(470px, 50dvh)';
+// Overlay stays transparent across this top band (the app header) so the header
+// is never dimmed, then ramps to full scrim just below it.
+const HEADER_UNDIM_PX = 88;
+
+// Full-card fill/border (dark) ↔ purple pill (capsule) — identical to
+// BetSlipFullSheet so the shrunk capsule reads as the same purple bet-slip pill.
+const SHEET_BG = 'linear-gradient(to bottom, #191919 0%, #0f0f0f 100%)';
+const CARD_BORDER = 'rgba(251,251,251,0.12)';
+const PILL_BG = 'linear-gradient(64.6deg, #14083d 0%, #230c3e 100%)';
+const PILL_BORDER = '#4b20ff';
+
+// Ticket-stub outline (Figma `_strokeTicket` 33938:331683) — a subtle rounded
+// rect with two inward semicircular notches on the left/right edges at the
+// DRAFTEA divider line. Drawn as a MEASURED vector (viewBox = live px size) so
+// the corners stay crisp and the notches stay round at any card height, instead
+// of stretching the fixed Figma raster. `notchY` is the divider's center,
+// measured relative to the outline's top.
+const TICKET_CORNER = 22; // top/bottom corner radius
+const NOTCH_DEPTH = 9; // how far each notch bites inward (horizontal radius)
+const NOTCH_HALF_H = 11; // half the notch height (vertical radius)
+const STROKE_WIDTH = 4; // ticket outline stroke weight
+const STROKE_INSET = STROKE_WIDTH / 2; // half the stroke, so it isn't clipped
+
+// Dashed tear-line for the header/selections divider — dash 10px, gap 10px.
+// Tailwind's border-dashed can't set dash/gap length, so draw it with a
+// horizontal repeating gradient.
+const DASH_LINE = {
+  backgroundImage:
+    'repeating-linear-gradient(to right, rgba(251,251,251,0.32) 0, rgba(251,251,251,0.32) 10px, transparent 10px, transparent 20px)',
+};
+
+function TicketOutline({ notchY }: { notchY: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () =>
+      setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const { w, h } = size;
+  const p = STROKE_INSET;
+  const r = TICKET_CORNER;
+  const nd = NOTCH_DEPTH;
+  const nh = NOTCH_HALF_H;
+  // Guard against the pre-measure (0×0) frame and a notch too close to a corner.
+  const ny = Math.min(Math.max(notchY, r + nh), h - r - nh);
+  // Clockwise from the top-left corner. Right + left notches bulge INWARD
+  // (sweep 0) as concave half-ellipses.
+  const d =
+    w > 0 && h > 0
+      ? [
+          `M ${r} ${p}`,
+          `H ${w - r}`,
+          `A ${r} ${r} 0 0 1 ${w - p} ${r}`,
+          `V ${ny - nh}`,
+          `A ${nd} ${nh} 0 0 0 ${w - p} ${ny + nh}`,
+          `V ${h - r}`,
+          `A ${r} ${r} 0 0 1 ${w - r} ${h - p}`,
+          `H ${r}`,
+          `A ${r} ${r} 0 0 1 ${p} ${h - r}`,
+          `V ${ny + nh}`,
+          `A ${nd} ${nh} 0 0 0 ${p} ${ny - nh}`,
+          `V ${r}`,
+          `A ${r} ${r} 0 0 1 ${r} ${p}`,
+          'Z',
+        ].join(' ')
+      : '';
+
+  return (
+    <div ref={ref} className="pointer-events-none absolute inset-0" aria-hidden>
+      {d && (
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox={`0 0 ${w} ${h}`}
+          fill="none"
+          preserveAspectRatio="none"
+        >
+          <path
+            d={d}
+            stroke="rgba(251,251,251,0.18)"
+            strokeWidth={STROKE_WIDTH}
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+type Props = {
+  selections: Selection[];
+  cumulativeOdds: number;
+  /** Entrada nueva / swipe-down / backdrop — close and return Home. */
+  onNewEntry: () => void;
+  /** Reusar — close but keep the selections so the slip rebuilds. */
+  onReuse: () => void;
+  /** Compartir — visual only for now. */
+  onShare?: () => void;
+};
+
+export function SuccessEntrySheet({
+  selections,
+  cumulativeOdds,
+  onNewEntry,
+  onReuse,
+  onShare,
+}: Props) {
+  const potentialWin = Math.round(cumulativeOdds * STAKE);
+  const orderedSelections = [...selections].reverse(); // latest first
+
+  // SHAPE MORPH — the card grows out of the slip footprint on open and shrinks
+  // back into it on close (never slides). `openP` (1 = full card, 0 = pill-sized
+  // capsule) drives a clip-path reveal + content/backdrop crossfade both ways.
+  const [isPresent, safeToRemove] = usePresence();
+  const openP = useMotionValue(0);
+
+  // Resting card height (content height, capped at the frame), measured so the
+  // clip reveal knows how far to open; re-measured as selections change.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const fullH = useMotionValue(560);
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.offsetHeight;
+      if (h > 0) fullH.set(h);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Squash-&-stretch pulse (scale), applied on the wrapper on close.
+  const scaleX = useMotionValue(1);
+  const scaleY = useMotionValue(1);
+
+  // Ticket-outline notch position — the DRAFTEA divider's vertical center,
+  // measured relative to the ticket region's top (header + divider are fixed,
+  // only the selections list below scrolls, so this stays stable).
+  const ticketRef = useRef<HTMLDivElement>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const [notchY, setNotchY] = useState(120);
+  useLayoutEffect(() => {
+    const ticket = ticketRef.current;
+    const divider = dividerRef.current;
+    if (!ticket || !divider) return;
+    const measure = () =>
+      setNotchY(divider.offsetTop + divider.offsetHeight / 2);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(ticket);
+    ro.observe(divider);
+    return () => ro.disconnect();
+  }, []);
+
+  // Bottom scroll-fade — shown when the (capped) selections list still has
+  // content below the fold, hinting it can be scrolled. Recomputed on scroll,
+  // on resize, and whenever the selection count changes.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [showFade, setShowFade] = useState(false);
+  const updateFade = () => {
+    const el = listRef.current;
+    if (!el) return;
+    setShowFade(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  };
+  useLayoutEffect(() => {
+    updateFade();
+    const el = listRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateFade);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedSelections.length]);
+
+  useEffect(() => {
+    if (isPresent) {
+      const a = animate(openP, 1, OPEN_SPRING);
+      return () => a.stop();
+    }
+    // Reverse the morph on the SAME spring so the card settles down into the
+    // pill (never a fast slide-away), then unmount, with a subtle squash pulse.
+    scaleX.set(CLOSE_PULSE_SCALE_X);
+    scaleY.set(CLOSE_PULSE_SCALE_Y);
+    const px = animate(scaleX, 1, PULSE_SPRING);
+    const py = animate(scaleY, 1, PULSE_SPRING);
+    const a = animate(openP, 0, OPEN_SPRING);
+    let done = false;
+    a.then(() => {
+      if (done) return;
+      done = true;
+      safeToRemove?.();
+    });
+    return () => {
+      done = true;
+      a.stop();
+      px.stop();
+      py.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPresent]);
+
+  // Bottom-up clip reveal + crossfades (identical to BetSlipFullSheet).
+  const clipPath = useTransform([openP, fullH], ([p, h]: number[]) => {
+    const top = Math.max(0, (h - START_H) * (1 - p));
+    return `inset(${top}px 0px 0px 0px round 28px)`;
+  });
+  const contentOpacity = useTransform(openP, [0.2, 0.8], [0, 1]);
+  const backdropOpacity = useTransform(openP, [0, 1], [0, 1]);
+  const cardDarkOpacity = useTransform(openP, [0.15, 0.55], [0, 1]);
+  const borderColor = useTransform(openP, [0.15, 0.55], [PILL_BORDER, CARD_BORDER]);
+  const morphY = useTransform(openP, [0, 0.5], [-PILL_RISE_PX, 0]);
+  const cardOpacity = useTransform(openP, [0, 0.12], [0, 1]);
+
+  // Swipe-down drives the shrink-morph directly (openP follows the finger 1:1).
+  const onCloseDragMove = (_e: unknown, info: PanInfo) => {
+    const range = Math.max(1, fullH.get() - START_H);
+    const p = info.offset.y > 0 ? Math.max(0, 1 - info.offset.y / range) : 1;
+    openP.set(p);
+  };
+  const handleSheetDragEnd = (_e: unknown, info: PanInfo) => {
+    if (info.offset.y > CLOSE_OFFSET_PX || info.velocity.y > CLOSE_VELOCITY) {
+      onNewEntry(); // dismiss = done → Home
+    } else {
+      animate(openP, 1, OPEN_SPRING);
+    }
+  };
+  const dragControls = useDragControls();
+
+  return (
+    <div
+      className="absolute inset-0 z-50"
+      style={{ fontFamily: "'Red Hat Display', sans-serif" }}
+    >
+      {/* Dim backdrop — leaves the app-header band undimmed. Tap = done → Home. */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          opacity: backdropOpacity,
+          background: `linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) ${HEADER_UNDIM_PX}px, rgba(0,0,0,0.7) ${HEADER_UNDIM_PX + 20}px, rgba(0,0,0,0.7) 100%)`,
+        }}
+        onClick={onNewEntry}
+        aria-hidden
+      />
+
+      {/* POSITIONING FRAME — bottom-anchored between the header cap and navbar. */}
+      <div
+        className="absolute left-4 right-4 flex flex-col justify-end"
+        style={{
+          top: TOP_INSET_PX,
+          bottom: 0,
+          paddingBottom: `calc(env(safe-area-inset-bottom) + ${BOTTOM_GAP_PX}px)`,
+        }}
+      >
+        {/* POSITION-MORPH WRAPPER — lifts the card to the pill line as it shrinks,
+            carries the close squash pulse + the pill↔card cross-fade. Height is
+            content-adaptive but capped at MAX_CARD_H (470px, or half the screen
+            on shorter devices) — past that the selections list scrolls. */}
+        <motion.div
+          className="flex w-full flex-col"
+          style={{
+            maxHeight: MAX_CARD_H,
+            y: morphY,
+            scaleX,
+            scaleY,
+            opacity: cardOpacity,
+            transformOrigin: 'bottom center',
+          }}
+        >
+          {/* FLOATING CARD — content-height, capped at the frame. Grows out of /
+              shrinks into the slip footprint via `clipPath`; never translates. */}
+          <motion.div
+            ref={cardRef}
+            className="relative max-h-full w-full overflow-hidden rounded-[28px] border"
+            style={{ clipPath, borderColor }}
+            drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0}
+            onDrag={onCloseDragMove}
+            onDragEnd={handleSheetDragEnd}
+            onPointerDown={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest('button') || el.closest('[data-scroll]')) return;
+              dragControls.start(e);
+            }}
+          >
+            {/* FILL — purple pill base with the dark card fill crossfading over. */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ backgroundImage: PILL_BG }}
+              aria-hidden
+            />
+            <motion.div
+              className="pointer-events-none absolute inset-0"
+              style={{ backgroundImage: SHEET_BG, opacity: cardDarkOpacity }}
+              aria-hidden
+            />
+
+            {/* CONTENT — crossfades in as the card grows. The 16px general
+                padding (px-4) applies to everything inside; the ticket outline
+                and the buttons all align to it. */}
+            <motion.div
+              className="relative flex max-h-full w-full flex-col px-4"
+              style={{ opacity: contentOpacity }}
+            >
+              {/* Green success glow across the top edge — spans the full card
+                  width (bleeds past the 16px padding to the card edges). */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-x-4 top-0 h-[100px] opacity-[0.32] blur-[50px]"
+                style={{ backgroundColor: '#34d399' }}
+              />
+
+              {/* DRAFTEA watermark (Figma 33938:331677) — faint repeated logotype
+                  behind the header. Centered, bleeds past the card edges (clipped
+                  by the card's overflow-hidden). */}
+              <img
+                src={ticketHeaderBg}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-[14px] w-[414px] max-w-none -translate-x-1/2"
+              />
+
+              {/* HANDLE — swipe-down chrome (dismiss = done). */}
+              <div className="relative flex shrink-0 items-center justify-center px-3 pt-3 pb-2">
+                <div className="h-1 w-8 rounded-full bg-[rgba(251,251,251,0.32)]" />
+              </div>
+
+              {/* TICKET — header + divider + selections framed by the notched
+                  ticket-stub outline. The outline spans this region and never
+                  scrolls (the list inside it does). */}
+              <div
+                ref={ticketRef}
+                className="relative flex min-h-px flex-1 flex-col"
+              >
+                <TicketOutline notchY={notchY} />
+              {/* HEADER — title + ganancia / entrada / momio + green check. */}
+              <div className="relative flex shrink-0 items-center gap-1 px-3 pb-2 pt-1">
+                <div className="flex min-w-px flex-1 flex-col gap-0.5 py-2">
+                  <p className="text-[18px] font-black italic leading-[27px] text-[#fbfbfb]">
+                    ¡ENTRADA CREADA!
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
+                      $
+                    </span>
+                    <span className="text-[18px] font-black leading-[27px] text-[#fbfbfb]">
+                      {potentialWin}
+                    </span>
+                    <span className="text-[14px] font-normal leading-[21px] text-[rgba(251,251,251,0.5)]">
+                      Ganancia potencial
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 text-[14px] font-normal leading-[21px] text-[rgba(251,251,251,0.5)]">
+                    <span className="whitespace-nowrap">Entrada: ${STAKE}</span>
+                    <span className="whitespace-nowrap">Momio: {fmtOdds(cumulativeOdds)}</span>
+                  </div>
+                </div>
+                <img
+                  src={successIllustration}
+                  alt=""
+                  className="size-[72px] shrink-0"
+                  aria-hidden
+                />
+              </div>
+
+              {/* DRAFTEA divider — logo flanked by two hairlines. The notch
+                  line of the ticket outline is centered on this row. */}
+              <div
+                ref={dividerRef}
+                className="relative flex h-[30px] shrink-0 items-center justify-center gap-3 px-3"
+              >
+                <div className="h-px min-w-px flex-1" style={DASH_LINE} />
+                <img src={logoDraftea} alt="Draftea" className="h-4 opacity-60" />
+                <div className="h-px min-w-px flex-1" style={DASH_LINE} />
+              </div>
+
+              {/* SELECTIONS — scrolls internally when the card is capped. */}
+              <div
+                ref={listRef}
+                data-scroll
+                onScroll={updateFade}
+                className="no-scrollbar relative min-h-px flex-1 overflow-y-auto"
+              >
+                {orderedSelections.map((sel) => (
+                  <div
+                    key={sel.id}
+                    className="flex w-full items-center gap-[6px] border-b border-[rgba(251,251,251,0.16)] px-3 py-2 last:border-b-0"
+                  >
+                    <div className="flex size-11 shrink-0 items-center justify-center">
+                      <div className="size-9 overflow-hidden rounded-[8px] backdrop-blur-[2px]">
+                        <img
+                          src={shieldIcon}
+                          alt=""
+                          className="size-full object-contain p-[3px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex min-w-px flex-1 flex-col justify-center">
+                      <p className="max-w-[190px] truncate text-[10px] font-bold uppercase leading-[15px] text-[rgba(251,251,251,0.5)]">
+                        {sel.market}
+                      </p>
+                      <p className="truncate text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
+                        {sel.pick}
+                      </p>
+                      <p className="truncate text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
+                        Mañana (00:00)
+                      </p>
+                    </div>
+                    <div className="flex w-[70px] shrink-0 items-center justify-end pr-1">
+                      <span className="text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
+                        {fmtOdds(sel.odds)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* SCROLL FADE — gradient to the ticket bg at the bottom of the
+                  selections list, shown only when there's more content below. */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-[20px] transition-opacity duration-200"
+                style={{
+                  opacity: showFade ? 1 : 0,
+                  backgroundImage:
+                    'linear-gradient(to bottom, rgba(15,15,15,0) 0%, #0f0f0f 100%)',
+                }}
+              />
+              </div>
+              {/* /TICKET */}
+
+              {/* BUTTONS — Compartir + Reusar, side by side. (Returning Home is
+                  handled by swipe-down / backdrop-tap → onNewEntry.) 12px gap
+                  above, between the ticket and the buttons. */}
+              <div className="flex shrink-0 items-stretch gap-2 pb-4 pt-3">
+                <button
+                  type="button"
+                  onClick={onShare}
+                  className="flex h-12 min-w-px flex-1 items-center justify-center gap-2 rounded-[12px] active:scale-[0.99]"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(29.5deg, #4b20ff 0%, #9730ff 100%)',
+                  }}
+                >
+                  <img src={shareIcon} alt="" className="size-4" />
+                  <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
+                    Compartir
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onReuse}
+                  className="flex h-12 min-w-px flex-1 items-center justify-center gap-2 rounded-[12px] bg-[rgba(251,251,251,0.12)] active:scale-[0.99]"
+                >
+                  <img src={reuseIcon} alt="" className="size-4" />
+                  <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
+                    Reusar
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
