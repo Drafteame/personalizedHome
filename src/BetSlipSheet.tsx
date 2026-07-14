@@ -517,6 +517,8 @@ export function BetSlipSheet({
               onRemove={onRemove}
               onRemoveGroup={onRemoveGroup}
               stopSwipePropagation
+              dividers="none"
+              showStandaloneDate={false}
             />
           </div>
 

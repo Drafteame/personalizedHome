@@ -28,9 +28,47 @@ type Props = {
   onRemove?: (id: string) => void;
   onRemoveGroup?: (matchId: string) => void;
   stopSwipePropagation?: boolean;
+  /** Divider policy between units. `'auto'` (default) shows dividers only when
+      the slip contains at least one SGP group (a pure list of single-match
+      bets needs none); `'none'` never draws them (the summarized slip). */
+  dividers?: 'auto' | 'none';
+  /** Show the kickoff line under a standalone (non-SGP) leg. The summarized
+      slip turns this off so its 2-selection view stays compact. */
+  showStandaloneDate?: boolean;
 };
 
 const DIVIDER_COLOR = 'rgba(251,251,251,0.12)';
+
+// × tint per context. The group header × is full white; the × inside an SGP
+// member row matches the market-name color; standalone rows keep the default.
+const X_WHITE = '#fbfbfb';
+const X_MARKET = 'rgba(251,251,251,0.5)'; // same as the market label
+const X_DEFAULT = 'rgba(251,251,251,0.7)';
+
+/**
+ * CloseGlyph — the × icon rendered as a CSS mask so it can be tinted any color
+ * (the source close.svg has a fixed fill, so an <img> can't be recolored).
+ */
+function CloseGlyph({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: color,
+        WebkitMaskImage: `url(${closeIcon})`,
+        maskImage: `url(${closeIcon})`,
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+      }}
+    />
+  );
+}
 
 function Shield() {
   return (
@@ -47,12 +85,14 @@ function RemoveButton({
   stop,
   label,
   compact,
+  color = X_DEFAULT,
 }: {
   onRemove: () => void;
   stop?: boolean;
   label: string;
   /** Shorter 40px hit area for the group header (member rows are 48px). */
   compact?: boolean;
+  color?: string;
 }) {
   return (
     <button
@@ -64,7 +104,7 @@ function RemoveButton({
         compact ? 'h-10' : 'h-12'
       }`}
     >
-      <img src={closeIcon} alt="" className="size-4" />
+      <CloseGlyph color={color} />
     </button>
   );
 }
@@ -76,6 +116,8 @@ function SelectionRow({
   showDate,
   showOdds,
   indent,
+  padded,
+  xColor = X_DEFAULT,
   stop,
 }: {
   sel: Selection;
@@ -85,17 +127,24 @@ function SelectionRow({
       odds); standalone straight bets keep their own odds. */
   showOdds: boolean;
   indent: boolean;
+  /** Extra vertical padding — standalone rows breathe; SGP members stay tight. */
+  padded?: boolean;
+  /** × tint (SGP members match the market color; standalone rows default). */
+  xColor?: string;
   stop?: boolean;
 }) {
   return (
     <div
-      className={`flex min-h-11 w-full items-center ${indent ? 'pl-3' : ''}`}
+      className={`flex min-h-11 w-full items-center ${indent ? 'pl-3' : ''} ${
+        padded ? 'py-1' : ''
+      }`}
     >
       {onRemove && (
         <RemoveButton
           onRemove={() => onRemove(sel.id)}
           stop={stop}
           label="Quitar selección"
+          color={xColor}
         />
       )}
       <div
@@ -155,7 +204,7 @@ function StraightBetRow({
           onPointerDownCapture={stop ? (e) => e.stopPropagation() : undefined}
           className="flex size-5 shrink-0 items-center justify-center rounded-full p-[2px] active:scale-95"
         >
-          <img src={closeIcon} alt="" className="size-3" />
+          <CloseGlyph color={X_WHITE} size={12} />
         </button>
       )}
       <div className="flex min-w-px flex-1 items-center gap-1">
@@ -200,6 +249,7 @@ function SgpHeader({
           stop={stop}
           label="Quitar partido"
           compact
+          color={X_WHITE}
         />
       )}
       <div className="flex min-w-px flex-1 items-center gap-1 pl-3 pr-1">
@@ -231,6 +281,8 @@ export function SelectionGroups({
   onRemove,
   onRemoveGroup,
   stopSwipePropagation,
+  dividers = 'auto',
+  showStandaloneDate = true,
 }: Props) {
   const groups = groupSelections(selections);
   // A slip with exactly ONE selection is a straight bet — render the original
@@ -238,14 +290,19 @@ export function SelectionGroups({
   // field next to the amount). Standalone legs in a MULTI-selection slip keep
   // their date-under-pick + odds, since the Momio there is the combined odds.
   const isStraightBet = selections.length === 1;
+  // Dividers separate units only when the slip actually has SGP grouping to
+  // read (a pure list of single-match bets doesn't need them); `'none'` forces
+  // them off entirely (summarized slip).
+  const hasSgp = groups.some((g) => g.kind === 'sgp');
+  const showDividers = dividers !== 'none' && hasSgp;
 
   return (
     <div className="flex w-full flex-col">
       {groups.map((group, i) => {
         const divider =
-          i > 0 ? (
+          i > 0 && showDividers ? (
             <div
-              className="h-px w-full shrink-0"
+              className="my-2 h-px w-full shrink-0"
               style={{ backgroundColor: DIVIDER_COLOR }}
               aria-hidden
             />
@@ -268,6 +325,7 @@ export function SelectionGroups({
                   showDate={false}
                   showOdds={false}
                   indent
+                  xColor={X_MARKET}
                   stop={stopSwipePropagation}
                 />
               ))}
@@ -288,9 +346,11 @@ export function SelectionGroups({
               <SelectionRow
                 sel={group.selection}
                 onRemove={onRemove}
-                showDate
+                showDate={showStandaloneDate}
                 showOdds
                 indent={false}
+                padded
+                xColor={X_WHITE}
                 stop={stopSwipePropagation}
               />
             )}

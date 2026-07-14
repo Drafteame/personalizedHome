@@ -57,18 +57,19 @@ const START_H = 56;
 // The card sits at the navbar line; the pill sits ~this many px higher. As the
 // card shrinks to the capsule it rises by this much to land ON the pill.
 const PILL_RISE_PX = 62;
-// The app header (sticky topbar, ~88px) must stay visible — the card can never
-// grow past this line. Only bounds MAX height; small cards stay bottom-anchored.
-const TOP_INSET_PX = 96;
+// The app header (sticky topbar: the logo/balance bar, ~44px now that the
+// simulated status bar is gone) must stay visible — the card can never grow
+// past this line. Only bounds MAX height; small cards stay bottom-anchored.
+const TOP_INSET_PX = 52;
 // Bottom gap so the card's lower edge lines up with the navbar.
 const BOTTOM_GAP_PX = 16;
 // Max card height — 470px, but never more than half the screen on shorter
 // devices. Content shorter than this stays content-height (bottom-anchored);
 // taller entries hit the cap and scroll the selections list internally.
 const MAX_CARD_H = 'min(470px, 50dvh)';
-// Overlay stays transparent across this top band (the app header) so the header
-// is never dimmed, then ramps to full scrim just below it.
-const HEADER_UNDIM_PX = 88;
+// Overlay stays transparent across this top band (the ~44px app header) so the
+// header is never dimmed, then ramps to full scrim just below it.
+const HEADER_UNDIM_PX = 44;
 
 // Full-card fill/border (dark) ↔ purple pill (capsule) — identical to
 // BetSlipFullSheet so the shrunk capsule reads as the same purple bet-slip pill.

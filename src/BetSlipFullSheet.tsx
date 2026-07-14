@@ -66,16 +66,17 @@ const START_H = 56;
 // by this much so it lands ON the pill (not the navbar). Ramps in only over the
 // small end of the morph so the full card stays put at the navbar line.
 const PILL_RISE_PX = 62;
-// Top inset of the floating card's max height — the app header (sticky topbar,
-// ~88px on the 390×844 mockup) must stay visible, so the card can never grow
-// past this line. Only bounds the MAX height; small slips stay bottom-anchored.
-const TOP_INSET_PX = 96;
+// Top inset of the floating card's max height — the app header (sticky topbar:
+// the logo/balance bar, ~44px now that the simulated status bar is gone) must
+// stay visible, so the card can never grow past this line (~8px below the
+// header). Only bounds the MAX height; small slips stay bottom-anchored.
+const TOP_INSET_PX = 52;
 // Bottom gap so the card's lower edge lines up with the navbar (which sits
 // pb-4 = 16px above the safe-area inset).
 const BOTTOM_GAP_PX = 16;
-// Overlay stays transparent across this top band (the ~88px app header) so the
+// Overlay stays transparent across this top band (the ~44px app header) so the
 // header is never dimmed, then ramps to full scrim just below it.
-const HEADER_UNDIM_PX = 88;
+const HEADER_UNDIM_PX = 44;
 
 // Full-card fill/border (dark). As the card shrinks toward the pill it
 // cross-fades to the PILL look below so the capsule reads as the SAME purple

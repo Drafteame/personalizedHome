@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import betsIcon from './assets/bets.svg';
 import chevronIcon from './assets/chevron.svg';
 import gamingIcon from './assets/gaming.svg';
@@ -1022,14 +1022,26 @@ export function HomeScreenChrome({
   // (so we measure the topbar's height). The leagues row lives at the top of
   // that pinned stack and collapses on scroll-down / reappears on scroll-up.
   const topbarRef = useRef<HTMLDivElement>(null);
-  const [topbarH, setTopbarH] = useState(88);
-  useEffect(() => {
-    const measure = () => {
-      if (topbarRef.current) setTopbarH(topbarRef.current.offsetHeight);
-    };
+  // The leagues/tabs tier pins to the BOTTOM of the topbar, so its offset must
+  // equal the topbar's live height. We measure it rather than hardcode a value
+  // (it changed when the fake status bar was removed) so the tier always sits
+  // flush against the real header with no gap. useLayoutEffect measures BEFORE
+  // the first paint (no wrong-offset flash), and a ResizeObserver keeps it in
+  // sync across viewport-height changes (mobile address-bar show/hide, the
+  // desktop-only status-bar padding, font reflow, etc.).
+  const [topbarH, setTopbarH] = useState(0);
+  useLayoutEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    const measure = () => setTopbarH(el.offsetHeight);
     measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, []);
 
   return (
