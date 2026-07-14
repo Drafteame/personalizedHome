@@ -79,17 +79,26 @@ const CARD_BORDER = 'rgba(251,251,251,0.12)';
 const PILL_BG = 'linear-gradient(64.6deg, #14083d 0%, #230c3e 100%)';
 const PILL_BORDER = '#4b20ff';
 
-// Ticket-stub outline (Figma `_strokeTicket` 33938:331683) — a subtle rounded
-// rect with two inward semicircular notches on the left/right edges at the
-// DRAFTEA divider line. Drawn as a MEASURED vector (viewBox = live px size) so
-// the corners stay crisp and the notches stay round at any card height, instead
-// of stretching the fixed Figma raster. `notchY` is the divider's center,
-// measured relative to the outline's top.
-const TICKET_CORNER = 22; // top/bottom corner radius
+// Ticket-stub outline (Figma `_strokeTicket` 33938:331683) — a subtle stroke
+// with rounded TOP corners and two inward semicircular notches on the
+// left/right edges at the DRAFTEA divider line. Per Figma the outline is OPEN
+// at the bottom: NO bottom edge and NO bottom corners — the left and right
+// sides run straight down and FADE OUT to transparent toward the bottom (Figma
+// masks the tall stroke with a bottom "Fade" gradient). Drawn as a MEASURED
+// vector (viewBox = live px size) so the top corners stay crisp and the notches
+// stay round at any card height, with a vertical gradient stroke for the fade.
+// `notchY` is the divider's center, measured relative to the outline's top.
+const TICKET_CORNER = 22; // top corner radius
 const NOTCH_DEPTH = 9; // how far each notch bites inward (horizontal radius)
 const NOTCH_HALF_H = 11; // half the notch height (vertical radius)
 const STROKE_WIDTH = 4; // ticket outline stroke weight
 const STROKE_INSET = STROKE_WIDTH / 2; // half the stroke, so it isn't clipped
+const STROKE_BASE_ALPHA = 0.18; // border opacity at full strength
+// Vertical fade: the sides hold full strength until this many px from the
+// bottom, then ramp to transparent right at the bottom edge (matches Figma's
+// ~78px bottom "Fade" band). A fixed distance keeps the fade looking the same
+// regardless of how tall the card grows.
+const STROKE_FADE_PX = 90;
 
 // Dashed tear-line for the header/selections divider — dash 10px, gap 10px.
 // Tailwind's border-dashed can't set dash/gap length, so draw it with a
@@ -118,27 +127,31 @@ function TicketOutline({ notchY }: { notchY: number }) {
   const r = TICKET_CORNER;
   const nd = NOTCH_DEPTH;
   const nh = NOTCH_HALF_H;
-  // Guard against the pre-measure (0×0) frame and a notch too close to a corner.
-  const ny = Math.min(Math.max(notchY, r + nh), h - r - nh);
-  // Clockwise from the top-left corner. Right + left notches bulge INWARD
-  // (sweep 0) as concave half-ellipses.
+  // Guard against the pre-measure (0×0) frame and a notch too close to the top
+  // corner. No bottom clamp — the outline is open at the bottom now.
+  const ny = Math.min(Math.max(notchY, r + nh), Math.max(r + nh, h - nh));
+  // Fade-start as a gradient offset: full strength until STROKE_FADE_PX from
+  // the bottom, then ramp to transparent at the bottom edge. Never below the
+  // notch line, so the top/notch region always stays solid.
+  const fadeStart =
+    h > 0 ? Math.min(1, Math.max((ny + nh) / h, (h - STROKE_FADE_PX) / h)) : 0.6;
+  // OPEN path — no bottom edge, no bottom corners. Start at the bottom-left
+  // (open), run UP the left side (through the left notch), around the two
+  // rounded TOP corners, then DOWN the right side (through the right notch) to
+  // the bottom-right (open). Both notches bulge INWARD as concave half-ellipses.
   const d =
     w > 0 && h > 0
       ? [
-          `M ${r} ${p}`,
-          `H ${w - r}`,
-          `A ${r} ${r} 0 0 1 ${w - p} ${r}`,
-          `V ${ny - nh}`,
-          `A ${nd} ${nh} 0 0 0 ${w - p} ${ny + nh}`,
-          `V ${h - r}`,
-          `A ${r} ${r} 0 0 1 ${w - r} ${h - p}`,
-          `H ${r}`,
-          `A ${r} ${r} 0 0 1 ${p} ${h - r}`,
+          `M ${p} ${h}`, // bottom-left, open
           `V ${ny + nh}`,
-          `A ${nd} ${nh} 0 0 0 ${p} ${ny - nh}`,
+          `A ${nd} ${nh} 0 0 0 ${p} ${ny - nh}`, // left notch (inward)
           `V ${r}`,
-          `A ${r} ${r} 0 0 1 ${r} ${p}`,
-          'Z',
+          `A ${r} ${r} 0 0 1 ${r} ${p}`, // top-left corner
+          `H ${w - r}`, // top edge
+          `A ${r} ${r} 0 0 1 ${w - p} ${r}`, // top-right corner
+          `V ${ny - nh}`,
+          `A ${nd} ${nh} 0 0 0 ${w - p} ${ny + nh}`, // right notch (inward)
+          `V ${h}`, // right side down to bottom, open
         ].join(' ')
       : '';
 
@@ -151,10 +164,29 @@ function TicketOutline({ notchY }: { notchY: number }) {
           fill="none"
           preserveAspectRatio="none"
         >
+          <defs>
+            <linearGradient
+              id="ticketBorderFade"
+              gradientUnits="userSpaceOnUse"
+              x1={0}
+              y1={0}
+              x2={0}
+              y2={h}
+            >
+              <stop offset="0" stopColor="#fbfbfb" stopOpacity={STROKE_BASE_ALPHA} />
+              <stop
+                offset={fadeStart}
+                stopColor="#fbfbfb"
+                stopOpacity={STROKE_BASE_ALPHA}
+              />
+              <stop offset="1" stopColor="#fbfbfb" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <path
             d={d}
-            stroke="rgba(251,251,251,0.18)"
+            stroke="url(#ticketBorderFade)"
             strokeWidth={STROKE_WIDTH}
+            strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
           />
         </svg>
@@ -264,16 +296,22 @@ export function SuccessEntrySheet({
     const py = animate(scaleY, 1, PULSE_SPRING);
     const a = animate(openP, 0, OPEN_SPRING);
     let done = false;
-    a.then(() => {
+    const finish = () => {
       if (done) return;
       done = true;
       safeToRemove?.();
-    });
+    };
+    a.then(finish);
+    // Safety net — force the unmount even if the spring's completion callback
+    // never fires (interrupted animation, handoff, etc.), so the overlay can
+    // never get stuck mounted and blocking the home feed.
+    const fallback = window.setTimeout(finish, 600);
     return () => {
       done = true;
       a.stop();
       px.stop();
       py.stop();
+      window.clearTimeout(fallback);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPresent]);
@@ -285,6 +323,10 @@ export function SuccessEntrySheet({
   });
   const contentOpacity = useTransform(openP, [0.2, 0.8], [0, 1]);
   const backdropOpacity = useTransform(openP, [0, 1], [0, 1]);
+  // The ENTIRE overlay (backdrop + frame + card + gesture layer) becomes
+  // click-through the instant the card is closed, so even if this component
+  // lingers mounted for any reason it can never block the home feed underneath.
+  const overlayPE = useTransform(openP, (v) => (v < 0.05 ? 'none' : 'auto'));
   const cardDarkOpacity = useTransform(openP, [0.15, 0.55], [0, 1]);
   const borderColor = useTransform(openP, [0.15, 0.55], [PILL_BORDER, CARD_BORDER]);
   const morphY = useTransform(openP, [0, 0.5], [-PILL_RISE_PX, 0]);
@@ -306,9 +348,9 @@ export function SuccessEntrySheet({
   const dragControls = useDragControls();
 
   return (
-    <div
+    <motion.div
       className="absolute inset-0 z-50"
-      style={{ fontFamily: "'Red Hat Display', sans-serif" }}
+      style={{ fontFamily: "'Red Hat Display', sans-serif", pointerEvents: overlayPE }}
     >
       {/* Dim backdrop — leaves the app-header band undimmed. Tap = done → Home. */}
       <motion.div
@@ -321,9 +363,14 @@ export function SuccessEntrySheet({
         aria-hidden
       />
 
-      {/* POSITIONING FRAME — bottom-anchored between the header cap and navbar. */}
+      {/* POSITIONING FRAME — bottom-anchored between the header cap and navbar.
+          `pointer-events-none` so taps on the empty dim area AROUND the card fall
+          through to the backdrop below (which dismisses = returns Home); without
+          it this full-size frame would swallow every backdrop tap and the sheet
+          could never be closed by tapping outside — leaving it open and blocking
+          the home feed. The card itself re-enables pointer events (below). */}
       <div
-        className="absolute left-4 right-4 flex flex-col justify-end"
+        className="pointer-events-none absolute left-4 right-4 flex flex-col justify-end"
         style={{
           top: TOP_INSET_PX,
           bottom: 0,
@@ -333,9 +380,11 @@ export function SuccessEntrySheet({
         {/* POSITION-MORPH WRAPPER — lifts the card to the pill line as it shrinks,
             carries the close squash pulse + the pill↔card cross-fade. Height is
             content-adaptive but capped at MAX_CARD_H (470px, or half the screen
-            on shorter devices) — past that the selections list scrolls. */}
+            on shorter devices) — past that the selections list scrolls.
+            `pointer-events-auto` re-enables interaction on the card itself (the
+            frame above is click-through). */}
         <motion.div
-          className="flex w-full flex-col"
+          className="pointer-events-none flex w-full flex-col"
           style={{
             maxHeight: MAX_CARD_H,
             y: morphY,
@@ -346,10 +395,13 @@ export function SuccessEntrySheet({
           }}
         >
           {/* FLOATING CARD — content-height, capped at the frame. Grows out of /
-              shrinks into the slip footprint via `clipPath`; never translates. */}
+              shrinks into the slip footprint via `clipPath`; never translates.
+              `pointer-events-auto` lives HERE (not the wrapper) so the touch hit
+              area is clipped along with the visual — once the card shrinks/closes
+              it stops catching touches over the old (tall) footprint. */}
           <motion.div
             ref={cardRef}
-            className="relative max-h-full w-full overflow-hidden rounded-[28px] border"
+            className="pointer-events-auto relative max-h-full w-full overflow-hidden rounded-[28px] border"
             style={{ clipPath, borderColor }}
             drag="y"
             dragListener={false}
@@ -542,6 +594,6 @@ export function SuccessEntrySheet({
           </motion.div>
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

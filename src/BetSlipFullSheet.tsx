@@ -159,17 +159,22 @@ export function BetSlipFullSheet({
     });
     const a = animate(openP, 0, OPEN_SPRING);
     let done = false;
-    a.then(() => {
+    const finish = () => {
       if (done) return;
       done = true;
       safeToRemove?.();
-    });
+    };
+    a.then(finish);
+    // Safety net — force the unmount even if the spring's completion callback
+    // never fires, so the overlay can never get stuck mounted and blocking.
+    const fallback = window.setTimeout(finish, 600);
     return () => {
       done = true;
       a.stop();
       px.stop();
       py.stop();
       unsub();
+      window.clearTimeout(fallback);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPresent]);
@@ -181,6 +186,9 @@ export function BetSlipFullSheet({
   });
   const contentOpacity = useTransform(openP, [0.2, 0.8], [0, 1]);
   const backdropOpacity = useTransform(openP, [0, 1], [0, 1]);
+  // The ENTIRE overlay becomes click-through the instant the card is closed, so
+  // even if this component lingers mounted it can never block the feed beneath.
+  const overlayPE = useTransform(openP, (v) => (v < 0.05 ? 'none' : 'auto'));
   // Fill/border color morph — purple pill (small) ↔ dark card (full). Biased to
   // the small end so the capsule is purple by the time it's pill-sized.
   const cardDarkOpacity = useTransform(openP, [0.15, 0.55], [0, 1]);
@@ -220,9 +228,9 @@ export function BetSlipFullSheet({
   const dragControls = useDragControls();
 
   return (
-    <div
+    <motion.div
       className="absolute inset-0 z-50"
-      style={{ fontFamily: "'Red Hat Display', sans-serif" }}
+      style={{ fontFamily: "'Red Hat Display', sans-serif", pointerEvents: overlayPE }}
     >
       {/* Dim backdrop — covers the navbar + feed behind the floating card, but
           FADES to transparent across the app-header band (top ~88px) so the
@@ -241,7 +249,7 @@ export function BetSlipFullSheet({
           navbar line; the card is pushed to the bottom (justify-end) and grows
           upward as selections are added, never past TOP_INSET_PX. */}
       <div
-        className="absolute left-4 right-4 flex flex-col justify-end"
+        className="pointer-events-none absolute left-4 right-4 flex flex-col justify-end"
         style={{
           top: TOP_INSET_PX,
           bottom: 0,
@@ -255,7 +263,7 @@ export function BetSlipFullSheet({
           pill's content on close so it never looks empty). Kept separate from
           the draggable card so the drag (which drives openP) never fights it. */}
       <motion.div
-        className="flex max-h-full w-full flex-col"
+        className="pointer-events-none flex max-h-full w-full flex-col"
         style={{
           y: morphY,
           scaleX,
@@ -273,7 +281,7 @@ export function BetSlipFullSheet({
           as the same pill — not the dark navbar behind it. */}
       <motion.div
         ref={cardRef}
-        className="relative max-h-full w-full overflow-hidden rounded-[28px] border"
+        className="pointer-events-auto relative max-h-full w-full overflow-hidden rounded-[28px] border"
         style={{ clipPath, borderColor }}
         drag="y"
         dragListener={false}
@@ -554,6 +562,6 @@ export function BetSlipFullSheet({
       </motion.div>
       </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
