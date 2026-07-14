@@ -370,6 +370,13 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
+/* Text-input caret blink — hard on/off (step) so it reads as a cursor, used by
+   the amount field while the numeric keypad is open (AmountKeypad). */
+@keyframes caretBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
 /* Green "Entrada creada" card appearing (slip → green) — a circle expanding
    outward from the card's center until it covers the whole card. 75% of the
    clip reference box comfortably covers the card's corners. */

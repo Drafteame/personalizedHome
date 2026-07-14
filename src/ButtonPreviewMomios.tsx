@@ -60,6 +60,8 @@ export type ButtonLiveState = {
 type Props = {
   selectionCount: number;
   cumulativeOdds: number;
+  /** Entry amount shown as Monto (shared stake from App). Default 200. */
+  stake?: number;
   /** Multiplier to slow all ambient animations (debug overlay sets 3). */
   speedScale?: number;
   /** Callback fired whenever live ambient phase values change. */
@@ -71,6 +73,7 @@ type Props = {
 export function ButtonPreviewMomios({
   selectionCount,
   cumulativeOdds,
+  stake = 200,
   speedScale = 1,
   onLiveState,
   tier3OddsEffect = cfg.tier3OddsEffect,
@@ -1049,7 +1052,6 @@ export function ButtonPreviewMomios({
   /*  DERIVED display                                                */
   /* =============================================================== */
   const oddsLabel = useMemo(() => formatOdds(cumulativeOdds), [cumulativeOdds]);
-  const stake = 200;
   const potentialWin = Math.round(cumulativeOdds * stake);
 
   /* =============================================================== */

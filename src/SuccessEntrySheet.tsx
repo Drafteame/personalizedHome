@@ -10,9 +10,9 @@ import { useVerticalSwipe } from './useVerticalSwipe';
 import logoDraftea from './assets/logo-draftea.svg';
 import reuseIcon from './assets/reuse.svg';
 import shareIcon from './assets/share.svg';
-import shieldIcon from './assets/shield.svg';
 import successIllustration from './assets/success-illustration.svg';
 import ticketHeaderBg from './assets/ticket-header-bg.svg';
+import { SelectionGroups } from './SelectionGroups';
 import type { Selection } from './types';
 
 /**
@@ -41,7 +41,6 @@ import type { Selection } from './types';
  *   • Compartir → visual only for now.
  */
 
-const STAKE = 200;
 const fmtOdds = (n: number) => `${n.toFixed(2)}x`;
 
 const CLOSE_OFFSET_PX = 120;
@@ -197,6 +196,8 @@ function TicketOutline({ notchY }: { notchY: number }) {
 type Props = {
   selections: Selection[];
   cumulativeOdds: number;
+  /** Placed entry amount (shared stake from App). */
+  stake: number;
   /** Entrada nueva / swipe-down / backdrop — close and return Home. */
   onNewEntry: () => void;
   /** Reusar — close but keep the selections so the slip rebuilds. */
@@ -208,11 +209,12 @@ type Props = {
 export function SuccessEntrySheet({
   selections,
   cumulativeOdds,
+  stake,
   onNewEntry,
   onReuse,
   onShare,
 }: Props) {
-  const potentialWin = Math.round(cumulativeOdds * STAKE);
+  const potentialWin = Math.round(cumulativeOdds * stake);
   const orderedSelections = [...selections].reverse(); // latest first
 
   // SHAPE MORPH — the card grows out of the slip footprint on open and shrinks
@@ -496,7 +498,7 @@ export function SuccessEntrySheet({
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 text-[14px] font-normal leading-[21px] text-[rgba(251,251,251,0.5)]">
-                    <span className="whitespace-nowrap">Entrada: ${STAKE}</span>
+                    <span className="whitespace-nowrap">Entrada: ${stake}</span>
                     <span className="whitespace-nowrap">Momio: {fmtOdds(cumulativeOdds)}</span>
                   </div>
                 </div>
@@ -530,38 +532,10 @@ export function SuccessEntrySheet({
                 // still scrolls on mobile when there are enough selections.
                 style={{ touchAction: 'pan-y' }}
               >
-                {orderedSelections.map((sel) => (
-                  <div
-                    key={sel.id}
-                    className="flex w-full items-center gap-[6px] border-b border-[rgba(251,251,251,0.16)] px-3 py-2 last:border-b-0"
-                  >
-                    <div className="flex size-11 shrink-0 items-center justify-center">
-                      <div className="size-9 overflow-hidden rounded-[8px] backdrop-blur-[2px]">
-                        <img
-                          src={shieldIcon}
-                          alt=""
-                          className="size-full object-contain p-[3px]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex min-w-px flex-1 flex-col justify-center">
-                      <p className="max-w-[190px] truncate text-[10px] font-bold uppercase leading-[15px] text-[rgba(251,251,251,0.5)]">
-                        {sel.market}
-                      </p>
-                      <p className="truncate text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
-                        {sel.pick}
-                      </p>
-                      <p className="truncate text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
-                        Mañana (00:00)
-                      </p>
-                    </div>
-                    <div className="flex w-[70px] shrink-0 items-center justify-end pr-1">
-                      <span className="text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
-                        {fmtOdds(sel.odds)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                {/* SELECTIONS — shared SGP-grouped list, read-only (no × / group
+                    removal in the confirmation view). Same-match picks collapse
+                    into an SGP block; each unit is divided from the next. */}
+                <SelectionGroups selections={orderedSelections} />
               </div>
               {/* SCROLL FADE — gradient to the ticket bg at the bottom of the
                   selections list, shown only when there's more content below. */}

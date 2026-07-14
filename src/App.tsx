@@ -17,6 +17,11 @@ import type { Selection, Tier } from './types';
 // entry-creation animation starts.
 const LIGHTNING_SELECT_MS = 320;
 
+// Default entry amount (whole pesos). The stake lives here as the single source
+// of truth so it stays in sync across the summarized slip, the floating card and
+// the success sheet; the numeric keypad edits it. Reset to this on a new entry.
+const DEFAULT_STAKE = 200;
+
 /* ============================================================ */
 /*  Debug overlay helpers                                        */
 /* ============================================================ */
@@ -85,6 +90,23 @@ function selectionsForTier(target: Tier): Selection[] {
   }
 }
 
+/* ============================================================ */
+/*  SGP-mix demo set — used by the debug "Mezcla SGP" button.    */
+/*  A representative slip that exercises same-game-parlay         */
+/*  grouping: two SGP blocks (PSG·RMA ×3, ARS·RMA ×2) plus two    */
+/*  standalone picks from other matches (FCB·PSG, LIV·MCI).       */
+/* ============================================================ */
+function sgpMixSelections(): Selection[] {
+  const byId = (id: string) => MOCK_PICKS.find((p) => p.id === id)!;
+  const picks = [
+    byId('rma-w'), byId('lewa'), byId('mbappe'), // PSG vs RMA → SGP
+    byId('ars-w'), byId('ars-saka'), // ARS vs RMA → SGP
+    byId('fcb-w'), // Barcelona vs PSG → standalone
+    byId('liv-w'), // Liverpool vs Man City → standalone
+  ];
+  return picks.map((p, i) => ({ ...p, id: `${p.id}-${i}` }));
+}
+
 export function App() {
   const debug = useDebug();
   // MASTER SWITCH — see cfg.animationsEnabled. OR-ing it here suppresses the
@@ -93,6 +115,9 @@ export function App() {
   const reducedMotion =
     useReducedMotion() || !buttonProgressionConfig.animationsEnabled;
   const [selections, setSelections] = useState<Selection[]>([]);
+  // Entry amount (shared across both bet-slip views + the success sheet). Edited
+  // via the numeric keypad; reset to the default on each new entry.
+  const [stake, setStake] = useState(DEFAULT_STAKE);
   const [speedScale, setSpeedScale] = useState(1);
   const [live, setLive] = useState<ButtonLiveState | null>(null);
   // PASS 3 — Tier 3 odds effect selector (default flames; toggled in debug).
@@ -204,18 +229,6 @@ export function App() {
   // updaters. The microtask was firing BEFORE React re-rendered with the new
   // state, so BetSlipShell mounted with bouncy=false on its very first mount.
   // The ref is now flipped via BetSlipShell's onMounted callback (below).
-  const addRandom = useCallback(() => {
-    if (selections.length >= buttonProgressionConfig.maxSelections) return;
-    const available = MOCK_PICKS.filter(
-      (p) => !selections.some((s) => s.id.startsWith(p.id)),
-    );
-    const pool = available.length > 0 ? available : MOCK_PICKS;
-    const next = pool[Math.floor(Math.random() * pool.length)];
-    setSelections((s) => [...s, { ...next, id: `${next.id}-${s.length}` }]);
-    // HAPTIC — light selection tick on add. No-op on iOS Safari.
-    playSelectionHaptic();
-  }, [selections]);
-
   const togglePick = useCallback((id: string) => {
     // HAPTIC — light selection tick on every toggle (add OR remove). The
     // user's finger has already done the work; the haptic confirms it.
@@ -231,17 +244,6 @@ export function App() {
     });
   }, []);
 
-  const removeLast = useCallback(() => {
-    setSelections((s) => {
-      if (s.length === 0) return s;
-      // HAPTIC — same light tick as toggle/add so removal feels consistent.
-      playSelectionHaptic();
-      return s.slice(0, -1);
-    });
-  }, []);
-
-  const reset = useCallback(() => setSelections([]), []);
-
   const jumpToTier = useCallback((target: Tier) => {
     setSelections(selectionsForTier(target));
   }, []);
@@ -250,6 +252,12 @@ export function App() {
   const removeSelection = useCallback((id: string) => {
     playSelectionHaptic();
     setSelections((s) => s.filter((sel) => sel.id !== id));
+  }, []);
+
+  // Remove every selection from one match (× on an SGP group header).
+  const removeGroup = useCallback((matchId: string) => {
+    playSelectionHaptic();
+    setSelections((s) => s.filter((sel) => sel.matchId !== matchId));
   }, []);
 
   // Place the bet from the semi-expanded slip (swipe-to-confirm). Prototype
@@ -271,6 +279,7 @@ export function App() {
     setEntrySheet(false);
     setSelections([]);
     setExpanded(false);
+    setStake(DEFAULT_STAKE); // fresh slip → default amount
     setEntryCount((c) => c + 1);
     setEntryBump((n) => n + 1);
   }, []);
@@ -306,6 +315,7 @@ export function App() {
     setLightning(false);
     setSelections([]);
     setExpanded(false);
+    setStake(DEFAULT_STAKE); // fresh slip → default amount
     setEntryCount((c) => c + 1);
     setPromptOpen(true);
   }, []);
@@ -544,6 +554,14 @@ export function App() {
                   >
                     ▶ Simular confirmación
                   </button>
+                  {/* Load a mixed slip that shows SGP grouping: 2 SGP blocks +
+                      2 standalone picks from different matches. */}
+                  <button
+                    onClick={() => setSelections(sgpMixSelections())}
+                    className="mt-1.5 w-full rounded-md bg-white/10 px-2 py-1.5 text-[11px] font-bold text-white"
+                  >
+                    🎯 Cargar mezcla SGP
+                  </button>
                   {/* PASS 3 — Tier 3 odds effect variant toggle. */}
                   <button
                     onClick={() =>
@@ -558,32 +576,6 @@ export function App() {
                 </div>
               )}
 
-              {/* Action controls — Add / Remove / Reset */}
-              <div className="mx-3 mb-2 mt-3 flex gap-2">
-                <button
-                  onClick={addRandom}
-                  disabled={
-                    selections.length >= buttonProgressionConfig.maxSelections
-                  }
-                  className="flex-1 rounded-xl bg-gradient-to-r from-[#4b20ff] to-[#9730ff] px-3 py-2.5 text-[12px] font-bold text-white disabled:opacity-50"
-                >
-                  + Añadir selección
-                </button>
-                <button
-                  onClick={removeLast}
-                  disabled={selections.length === 0}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-[12px] font-bold text-white/90 disabled:opacity-30"
-                >
-                  − Quitar
-                </button>
-                <button
-                  onClick={reset}
-                  disabled={selections.length === 0}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-[12px] font-bold text-white/90 disabled:opacity-30"
-                >
-                  Reset
-                </button>
-              </div>
             </div>
 
             {/* Fixed bottom: gradient fade + button slot + navbar.
@@ -668,6 +660,8 @@ export function App() {
                           key="bet-slip-sheet"
                           selections={selections}
                           cumulativeOdds={cumulativeOdds}
+                          stake={stake}
+                          onStakeChange={setStake}
                           expanded={expanded}
                           onExpand={() =>
                             selections.length > 2
@@ -676,6 +670,7 @@ export function App() {
                           }
                           onCollapse={() => setExpanded(false)}
                           onRemove={removeSelection}
+                          onRemoveGroup={removeGroup}
                           onConfirm={confirmBet}
                           onKeepAlive={() => setKeepAliveNonce((n) => n + 1)}
                           onOpenList={() => setListOpen(true)}
@@ -750,7 +745,10 @@ export function App() {
                   key="bet-slip-full-sheet"
                   selections={selections}
                   cumulativeOdds={cumulativeOdds}
+                  stake={stake}
+                  onStakeChange={setStake}
                   onRemove={removeSelection}
+                  onRemoveGroup={removeGroup}
                   onClearAll={() => {
                     setSelections([]);
                     setListOpen(false);
@@ -784,6 +782,7 @@ export function App() {
                   key="success-entry-sheet"
                   selections={selections}
                   cumulativeOdds={cumulativeOdds}
+                  stake={stake}
                   onNewEntry={successNewEntry}
                   onReuse={successReuse}
                 />

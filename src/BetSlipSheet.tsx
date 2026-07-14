@@ -3,16 +3,18 @@ import {
   motion,
   useMotionValue,
   usePresence,
+  useSpring,
   useTransform,
 } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { useVerticalSwipe } from './useVerticalSwipe';
-import closeIcon from './assets/close.svg';
 import editIcon from './assets/edit.svg';
-import shieldIcon from './assets/shield.svg';
+import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
 import { ButtonPreviewMomios } from './ButtonPreviewMomios';
+import { SelectionGroups } from './SelectionGroups';
 import { SwipeToConfirm } from './SwipeToConfirm';
+import { useStakeKeypad } from './useStakeKeypad';
 import type { Selection } from './types';
 
 /**
@@ -39,7 +41,6 @@ import type { Selection } from './types';
  * onKeepAlive (defers auto-collapse).
  */
 
-const STAKE = 200; // fixed demo stake — matches ButtonPreviewMomios
 const fmtOdds = (n: number) => `${n.toFixed(2)}x`;
 
 // Morph geometry.
@@ -108,10 +109,16 @@ const GLASS_BG = 'linear-gradient(64.6deg, #14083d 0%, #230c3e 100%)';
 type Props = {
   selections: Selection[];
   cumulativeOdds: number;
+  /** Entry amount (shared stake from App). */
+  stake: number;
+  /** Commit a new amount from the keypad. */
+  onStakeChange: (next: number) => void;
   expanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
   onRemove: (id: string) => void;
+  /** Remove every selection from one match (× on an SGP group header). */
+  onRemoveGroup: (matchId: string) => void;
   onConfirm: () => void;
   /** Called on swipe-to-confirm interaction so the 4s auto-collapse resets. */
   onKeepAlive: () => void;
@@ -122,21 +129,68 @@ type Props = {
 export function BetSlipSheet({
   selections,
   cumulativeOdds,
+  stake,
+  onStakeChange,
   expanded,
   onExpand,
   onCollapse,
   onRemove,
+  onRemoveGroup,
   onConfirm,
   onKeepAlive,
   onOpenList,
 }: Props) {
-  const potentialWin = Math.round(cumulativeOdds * STAKE);
+  // Numeric keypad for editing the amount. Opening it clears the value and
+  // grows the slip (the keypad renders inside the measured content, so the
+  // existing ResizeObserver → `expandedH` spring absorbs it). Every keypad
+  // interaction also bumps onKeepAlive so the 10s auto-collapse can't fire
+  // mid-edit, and the collapse swipe is disabled while it's open.
+  const keypad = useStakeKeypad(stake, onStakeChange);
+  const openKeypad = () => {
+    onKeepAlive();
+    keypad.openKeypad();
+  };
+  const onKeypadDigit = (d: string) => {
+    onKeepAlive();
+    keypad.pressDigit(d);
+  };
+  const onKeypadDelete = () => {
+    onKeepAlive();
+    keypad.pressDelete();
+  };
+  // Winnings track the amount being edited (draft while the keypad is open,
+  // otherwise the saved stake) so Monto / Ganancia / swipe all stay in sync.
+  const potentialWin = Math.round(cumulativeOdds * keypad.displayValue);
+  // If the slip collapses while the keypad is open (e.g. a 3rd selection was
+  // added, which auto-collapses to the pill), commit + close the keypad so it
+  // doesn't reappear on the next expand.
+  useEffect(() => {
+    if (!expanded && keypad.open) keypad.done();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  // Keypad slot height (0 → keypad). Added DETERMINISTICALLY to the shell/glass
+  // height (below) so the slip grows to fit the keypad WITHOUT depending on the
+  // content ResizeObserver — the keypad is a separate layer, not measured by the
+  // RO, so there's no double-count with `expandedH`. Springs open/closed so the
+  // keypad slides into a growing slot.
+  const KEYPAD_SLOT = KEYPAD_H + 1; // + the 1px top divider
+  // A spring that FOLLOWS a target motion value: setting the target animates the
+  // output toward it (the canonical useSpring pattern). Setting a bare
+  // useSpring's own value does NOT animate, which made the slot lag behind
+  // `keypad.open`. Feeds the shell/glass height math below deterministically.
+  const keypadTarget = useMotionValue(0);
+  const keypadOffsetH = useSpring(keypadTarget, ADD_GROW_SPRING);
+  useEffect(() => {
+    keypadTarget.set(keypad.open ? KEYPAD_SLOT : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keypad.open]);
   // Summarized slip shows AT MOST 2 selections (latest first). Once a 3rd is
   // added the slip auto-collapses (App.tsx), so the expanded card only ever
-  // renders 1 or 2 rows. 1 selection keeps its existing single-row layout;
-  // 2 render as a vertical stack (Figma `newSelectionPreviewOSB`).
+  // renders 1 or 2 rows. Rendered via the shared SelectionGroups so SGP grouping
+  // (2 picks from the same match → one SGP block) reads identically to the
+  // floating card + success views.
   const visibleSelections = [...selections].reverse().slice(0, 2); // latest first
-  const isGrouped = visibleSelections.length >= 2;
 
   // Mount/unmount slide (mirrors BetSlipShell — declarative initial/animate
   // strands at `initial` under React 18 StrictMode, so animate by hand).
@@ -214,19 +268,32 @@ export function BetSlipSheet({
   // Blends the MEASURED expanded height with the collapsed pill footprint by
   // `collapseP` (0 = expanded → expandedH, 1 = collapsed → COLLAPSED_H).
   const height = useTransform(
-    [collapseP, expandedH],
-    ([p, eh]: number[]) => eh + (COLLAPSED_H - eh) * p,
+    [collapseP, expandedH, keypadOffsetH],
+    ([p, eh, kh]: number[]) => {
+      const expanded = eh + kh; // base content + keypad slot
+      return expanded + (COLLAPSED_H - expanded) * p;
+    },
   );
 
   // THE SINGLE MORPHING SURFACE — always opaque, so there's never an empty
   // frame. Its height and corner radius reshape continuously between the card
   // and the pill capsule; at collapsed it overlaps the real pill exactly.
   const glassHeight = useTransform(
-    [collapseP, expandedH],
-    ([p, eh]: number[]) => {
-      const gExpanded = eh - BOTTOM_INSET;
+    [collapseP, expandedH, keypadOffsetH],
+    ([p, eh, kh]: number[]) => {
+      const gExpanded = eh + kh - BOTTOM_INSET;
       return gExpanded + (COLLAPSED_GLASS_H - gExpanded) * p;
     },
+  );
+  // Content sits ABOVE the keypad slot — its bottom lifts by the keypad height
+  // so the two stack (keypad docked at the card's bottom edge, controls above).
+  const contentBottom = useTransform(keypadOffsetH, (kh) => BOTTOM_INSET + kh);
+  // Keypad fades in over the first part of its reveal.
+  const keypadOpacity = useTransform(
+    keypadOffsetH,
+    [0, KEYPAD_SLOT * 0.5],
+    [0, 1],
+    { clamp: true },
   );
   const glassRadius = useTransform(collapseP, [0, 1], [EXPANDED_GLASS_RADIUS, COLLAPSED_GLASS_RADIUS]);
   // Card CONTENT fades out over the first part of the collapse (it can't morph
@@ -307,6 +374,10 @@ export function BetSlipSheet({
   // browsers. It never fires from a pointerdown on the swipe thumb or the
   // ×/Lista buttons (excluded via `button`); swiping the card body collapses.
   const swipe = useVerticalSwipe({
+    // Enabled whenever the slip is expanded — INCLUDING while the keypad is open,
+    // so swipe-down still closes the slip (it collapses AND closes the keypad via
+    // the guard effect). Keypad KEYS are `<button>`s, excluded below, so tapping
+    // a digit never starts a collapse.
     enabled: () => expanded,
     exclude: 'button',
     onStart: () => {
@@ -318,8 +389,12 @@ export function BetSlipSheet({
     onMove: (dy) => {
       // Finger distance mapping to a full expand→collapse equals the height
       // delta so the card's TOP edge tracks the finger 1:1 as it shrinks. Uses
-      // the MEASURED expanded height so the mapping stays 1:1 at any row count.
-      const range = Math.max(1, expandedH.get() - COLLAPSED_H);
+      // the MEASURED expanded height PLUS the open keypad slot so the mapping
+      // stays 1:1 whether or not the keypad is showing.
+      const range = Math.max(
+        1,
+        expandedH.get() + keypadOffsetH.get() - COLLAPSED_H,
+      );
       collapseP.set(dy > 0 ? Math.min(1, dy / range) : 0);
     },
     onEnd: (dy, vy) => {
@@ -400,6 +475,7 @@ export function BetSlipSheet({
           <ButtonPreviewMomios
             selectionCount={selections.length}
             cumulativeOdds={cumulativeOdds}
+            stake={stake}
             speedScale={1}
             tier3OddsEffect={buttonProgressionConfig.tier3OddsEffect}
           />
@@ -416,8 +492,9 @@ export function BetSlipSheet({
              transition differs — and the glass grows in lockstep behind it. */}
         <motion.div
           ref={contentRef}
-          className="absolute inset-x-4 bottom-2 flex flex-col"
+          className="absolute inset-x-4 flex flex-col"
           style={{
+            bottom: contentBottom,
             opacity: cardContentOpacity,
             pointerEvents: expanded ? 'auto' : 'none',
           }}
@@ -430,107 +507,45 @@ export function BetSlipSheet({
             <div className="h-1 w-8 rounded-full bg-[rgba(251,251,251,0.32)]" />
           </div>
 
-          {isGrouped ? (
-            /* GROUPED SELECTIONS — vertical stack (Figma newSelectionPreviewOSB,
-               33712:267101), latest first, capped at 2 rows. */
-            <div className="flex flex-col px-[10px] pb-3 pt-0">
-              {visibleSelections.map((sel) => (
-                <div key={sel.id} className="flex h-[52px] items-center">
-                  {/* × + trailing vertical divider */}
-                  <button
-                    type="button"
-                    aria-label="Quitar selección"
-                    onClick={() => onRemove(sel.id)}
-                    onPointerDownCapture={(e) => e.stopPropagation()}
-                    className="flex h-full w-10 shrink-0 items-center justify-center active:scale-95"
-                  >
-                    <img src={closeIcon} alt="" className="size-4" />
-                  </button>
-                  <div className="h-10 w-px shrink-0 bg-[rgba(251,251,251,0.16)]" />
-                  {/* shield + market/pick */}
-                  <div className="flex min-w-px flex-1 items-center gap-[6px] overflow-hidden px-[6px] py-1">
-                    <div className="relative size-11 shrink-0">
-                      <div className="absolute right-1 top-1/2 size-9 -translate-y-1/2 overflow-hidden rounded-lg backdrop-blur-[2px]">
-                        <img
-                          src={shieldIcon}
-                          alt=""
-                          className="size-full object-contain p-[3px]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex min-w-px flex-1 flex-col justify-center">
-                      <p className="max-w-[162px] truncate text-[10px] font-bold uppercase leading-[15px] text-[rgba(251,251,251,0.5)]">
-                        {sel.market}
-                      </p>
-                      <p className="truncate text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
-                        {sel.pick}
-                      </p>
-                    </div>
-                  </div>
-                  {/* odds */}
-                  <div className="flex w-[85px] shrink-0 flex-col items-end justify-center pl-1 pr-3">
-                    <span className="whitespace-nowrap text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
-                      {fmtOdds(sel.odds)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* SINGLE SELECTION — unchanged from before (one stacked row). */
-            <div className="flex flex-col gap-1 px-[10px] pb-3 pt-0">
-              {visibleSelections.map((sel) => (
-                <div key={sel.id} className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label="Quitar selección"
-                    onClick={() => onRemove(sel.id)}
-                    onPointerDownCapture={(e) => e.stopPropagation()}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full p-[2px] active:scale-95"
-                  >
-                    <img src={closeIcon} alt="" className="size-3" />
-                  </button>
-                  <div className="flex min-w-px flex-1 items-center gap-1">
-                    <div className="size-9 shrink-0 backdrop-blur-[2px]">
-                      <img
-                        src={shieldIcon}
-                        alt=""
-                        className="size-full object-contain p-[3px]"
-                      />
-                    </div>
-                    <div className="flex min-w-px flex-col justify-center">
-                      <p className="max-w-[162px] truncate text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]">
-                        {sel.market}
-                      </p>
-                      <p className="truncate text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
-                        {sel.pick}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex w-[92px] shrink-0 flex-col justify-center text-right text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]">
-                    <span className="truncate">Hoy 18:00</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* SELECTIONS — shared SGP-grouped list (2 picks from the same match
+              collapse into one SGP block; different matches stay standalone rows
+              separated by a divider). `stopSwipePropagation` keeps taps on the ×
+              from starting the collapse gesture. */}
+          <div className="px-[10px] pb-3 pt-0">
+            <SelectionGroups
+              selections={visibleSelections}
+              onRemove={onRemove}
+              onRemoveGroup={onRemoveGroup}
+              stopSwipePropagation
+            />
+          </div>
 
           {/* Divider */}
           <div className="h-px w-full bg-[rgba(251,251,251,0.1)]" />
 
           {/* Entry info — Monto / Momio / Ganancia */}
           <div className="flex w-full items-center gap-3 px-[10px] pt-[10px]">
-            <div className="flex min-w-px flex-1 flex-col items-center justify-center">
+            <button
+              type="button"
+              onClick={openKeypad}
+              className="flex min-w-px flex-1 flex-col items-center justify-center rounded-lg active:scale-95"
+            >
               <div className="flex items-center gap-1">
                 <img src={editIcon} alt="" className="size-3" />
                 <p className="text-[14px] font-black leading-[21px] text-[#fbfbfb]">
-                  ${STAKE}
+                  ${keypad.displayText}
+                  {keypad.open && (
+                    <span
+                      aria-hidden
+                      className="ml-px inline-block h-[0.95em] w-[2px] animate-[caretBlink_1s_step-end_infinite] bg-current align-middle"
+                    />
+                  )}
                 </p>
               </div>
               <p className="text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
                 Monto
               </p>
-            </div>
+            </button>
             <div className="flex min-w-px flex-1 flex-col items-center justify-center">
               <p className="text-[14px] font-black leading-[21px] text-[#fbfbfb]">
                 {fmtOdds(cumulativeOdds)}
@@ -554,9 +569,33 @@ export function BetSlipSheet({
           <div className="flex w-full flex-col px-[10px] pb-[10px] pt-2">
             <SwipeToConfirm
               key={expanded ? 'expanded' : 'collapsed'}
-              stake={STAKE}
+              stake={keypad.displayValue}
               onConfirm={onConfirm}
               onSwipeStart={onKeepAlive}
+            />
+          </div>
+        </motion.div>
+
+        {/* NUMERIC KEYPAD — a docked layer at the card's bottom edge. Its slot
+            height (`keypadOffsetH`) is added to the shell/glass height above, so
+            opening it GROWS the slip deterministically (no ResizeObserver
+            dependency). The AmountKeypad is bottom-anchored inside the growing,
+            clipped slot, so it's revealed as the slot springs open. */}
+        <motion.div
+          className="absolute inset-x-4 bottom-2 overflow-hidden"
+          style={{
+            height: keypadOffsetH,
+            opacity: keypadOpacity,
+            pointerEvents: keypad.open ? 'auto' : 'none',
+          }}
+          aria-hidden={!keypad.open}
+        >
+          <div className="absolute inset-x-0 bottom-0 border-t border-[rgba(251,251,251,0.12)]">
+            <AmountKeypad
+              onDigit={onKeypadDigit}
+              onDelete={onKeypadDelete}
+              onDone={keypad.done}
+              onSwipeDown={onCollapse}
             />
           </div>
         </motion.div>
