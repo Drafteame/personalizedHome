@@ -350,7 +350,17 @@ export function SuccessEntrySheet({
   return (
     <motion.div
       className="absolute inset-0 z-50"
-      style={{ fontFamily: "'Red Hat Display', sans-serif", pointerEvents: overlayPE }}
+      style={{
+        fontFamily: "'Red Hat Display', sans-serif",
+        // While OPEN, follow `overlayPE` (interactive once the card is on
+        // screen). The MOMENT dismissal is committed (isPresent → false, from
+        // swipe-down / backdrop-tap / a button), force the WHOLE overlay
+        // click-through — so during the close animation, and even if this
+        // component were to linger mounted for any reason, it can never keep
+        // blocking the home feed underneath. Pairs with the 600ms safeToRemove
+        // fallback below (guaranteed unmount).
+        pointerEvents: isPresent ? overlayPE : 'none',
+      }}
     >
       {/* Dim backdrop — leaves the app-header band undimmed. Tap = done → Home. */}
       <motion.div
@@ -402,7 +412,19 @@ export function SuccessEntrySheet({
           <motion.div
             ref={cardRef}
             className="pointer-events-auto relative max-h-full w-full overflow-hidden rounded-[28px] border"
-            style={{ clipPath, borderColor }}
+            style={{
+              clipPath,
+              borderColor,
+              // The close-drag is started manually via dragControls
+              // (dragListener=false), so Framer does NOT auto-apply touch-action
+              // here. Without `none`, a mobile browser claims the vertical
+              // gesture as a scroll and fires pointercancel — the swipe-down
+              // never reaches Framer, so the card can't be swiped closed (and a
+              // cancelled drag springs it back open, leaving it covering the
+              // feed). `none` lets the drag grab the gesture. The scrollable
+              // selections list re-enables vertical panning with `pan-y` (below).
+              touchAction: 'none',
+            }}
             drag="y"
             dragListener={false}
             dragControls={dragControls}
@@ -513,6 +535,10 @@ export function SuccessEntrySheet({
                 data-scroll
                 onScroll={updateFade}
                 className="no-scrollbar relative min-h-px flex-1 overflow-y-auto"
+                // The card sets touch-action:none for the close-drag; re-enable
+                // vertical touch-scrolling HERE so the (capped) selections list
+                // still scrolls on mobile when there are enough selections.
+                style={{ touchAction: 'pan-y' }}
               >
                 {orderedSelections.map((sel) => (
                   <div

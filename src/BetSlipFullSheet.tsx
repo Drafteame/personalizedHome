@@ -230,7 +230,14 @@ export function BetSlipFullSheet({
   return (
     <motion.div
       className="absolute inset-0 z-50"
-      style={{ fontFamily: "'Red Hat Display', sans-serif", pointerEvents: overlayPE }}
+      style={{
+        fontFamily: "'Red Hat Display', sans-serif",
+        // While OPEN, follow `overlayPE`. The MOMENT close is committed
+        // (isPresent → false), force the WHOLE overlay click-through so it can
+        // never keep blocking the home feed during/after the close animation.
+        // Pairs with the 600ms safeToRemove fallback (guaranteed unmount).
+        pointerEvents: isPresent ? overlayPE : 'none',
+      }}
     >
       {/* Dim backdrop — covers the navbar + feed behind the floating card, but
           FADES to transparent across the app-header band (top ~88px) so the
@@ -282,7 +289,16 @@ export function BetSlipFullSheet({
       <motion.div
         ref={cardRef}
         className="pointer-events-auto relative max-h-full w-full overflow-hidden rounded-[28px] border"
-        style={{ clipPath, borderColor }}
+        style={{
+          clipPath,
+          borderColor,
+          // dragControls + dragListener=false ⇒ Framer does NOT auto-apply
+          // touch-action, so without `none` the mobile browser eats the
+          // vertical swipe-down (pointercancel) and the card can't be swiped
+          // closed. `none` lets the close-drag grab the gesture; the scrollable
+          // selections list re-enables vertical panning with `pan-y` (below).
+          touchAction: 'none',
+        }}
         drag="y"
         dragListener={false}
         dragControls={dragControls}
@@ -369,6 +385,10 @@ export function BetSlipFullSheet({
         <div
           data-scroll
           className="no-scrollbar relative min-h-px flex-1 overflow-y-auto"
+          // The card sets touch-action:none for the close-drag; re-enable
+          // vertical touch-scrolling HERE so the selections list still scrolls
+          // on mobile.
+          style={{ touchAction: 'pan-y' }}
         >
           {orderedSelections.map((sel) => (
             <div key={sel.id} className="flex w-full items-stretch">
