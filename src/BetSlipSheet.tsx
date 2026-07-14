@@ -1,13 +1,12 @@
 import {
   animate,
   motion,
-  useDragControls,
   useMotionValue,
   usePresence,
   useTransform,
-  type PanInfo,
 } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import { useVerticalSwipe } from './useVerticalSwipe';
 import closeIcon from './assets/close.svg';
 import editIcon from './assets/edit.svg';
 import shieldIcon from './assets/shield.svg';
@@ -70,8 +69,7 @@ const OPEN_LIST_OFFSET_PX = 48;
 const OPEN_LIST_VELOCITY = 450;
 // The shell itself does NOT translate with the finger — it stays anchored and
 // the collapse is expressed as a continuous HEIGHT morph (see collapseP). The
-// gesture is read from the raw pointer offset, so elastic can be 0.
-const DRAG_ELASTIC = 0;
+// gesture is read from the raw pointer offset (useVerticalSwipe).
 // Spring for programmatic / release transitions of the morph progress.
 const COLLAPSE_SPRING = { type: 'spring', stiffness: 320, damping: 34 } as const;
 // Gentler spring for the measured-height GROW/shrink when a selection is
@@ -304,42 +302,44 @@ export function BetSlipSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
 
-  // Collapse drag is started manually (dragListener=false) so it never fires
-  // from a pointerdown on the swipe thumb or the ×/Lista buttons — those keep
-  // their own gestures/taps. Swiping the card body still collapses.
-  const dragControls = useDragControls();
-
-  const onCollapseDragStart = () => {
-    draggingRef.current = true;
-    onKeepAlive();
-  };
-  // Downward drag drives the collapse morph directly (finger → progress).
-  // Upward keeps it expanded (an up-swipe opens the full sheet on release).
-  const onCollapseDragMove = (_e: unknown, info: PanInfo) => {
-    // Finger distance mapping to a full expand→collapse equals the height delta
-    // so the card's TOP edge tracks the finger 1:1 as it shrinks. Uses the
-    // MEASURED expanded height so the mapping stays 1:1 at any row count.
-    const range = Math.max(1, expandedH.get() - COLLAPSED_H);
-    const p = info.offset.y > 0 ? Math.min(1, info.offset.y / range) : 0;
-    collapseP.set(p);
-  };
-  const handleCollapseDrag = (_e: unknown, info: PanInfo) => {
-    draggingRef.current = false;
-    // Swipe UP → open the full-screen "Resumen" sheet; settle the morph open.
-    if (info.offset.y < -OPEN_LIST_OFFSET_PX || info.velocity.y < -OPEN_LIST_VELOCITY) {
+  // Collapse swipe via raw pointer events (useVerticalSwipe) rather than
+  // Framer's drag, which failed to grab the touch gesture on real mobile
+  // browsers. It never fires from a pointerdown on the swipe thumb or the
+  // ×/Lista buttons (excluded via `button`); swiping the card body collapses.
+  const swipe = useVerticalSwipe({
+    enabled: () => expanded,
+    exclude: 'button',
+    onStart: () => {
+      draggingRef.current = true;
+      onKeepAlive();
+    },
+    // Downward drag drives the collapse morph directly (finger → progress).
+    // Upward keeps it expanded (an up-swipe opens the full sheet on release).
+    onMove: (dy) => {
+      // Finger distance mapping to a full expand→collapse equals the height
+      // delta so the card's TOP edge tracks the finger 1:1 as it shrinks. Uses
+      // the MEASURED expanded height so the mapping stays 1:1 at any row count.
+      const range = Math.max(1, expandedH.get() - COLLAPSED_H);
+      collapseP.set(dy > 0 ? Math.min(1, dy / range) : 0);
+    },
+    onEnd: (dy, vy) => {
+      draggingRef.current = false;
+      // Swipe UP → open the full-screen "Resumen" sheet; settle the morph open.
+      if (dy < -OPEN_LIST_OFFSET_PX || vy < -OPEN_LIST_VELOCITY) {
+        animate(collapseP, 0, COLLAPSE_SPRING);
+        onOpenList();
+        return;
+      }
+      // Swipe DOWN past the threshold → commit. `expanded` flips false and the
+      // resting-spring effect finishes the morph from where the finger left off.
+      if (dy > COLLAPSE_OFFSET_PX || vy > COLLAPSE_VELOCITY) {
+        onCollapse();
+        return;
+      }
+      // Not far enough → cancel: spring the morph back open.
       animate(collapseP, 0, COLLAPSE_SPRING);
-      onOpenList();
-      return;
-    }
-    // Swipe DOWN past the threshold → commit. `expanded` flips false and the
-    // resting-spring effect finishes the morph from where the finger left off.
-    if (info.offset.y > COLLAPSE_OFFSET_PX || info.velocity.y > COLLAPSE_VELOCITY) {
-      onCollapse();
-      return;
-    }
-    // Not far enough → cancel: spring the morph back open.
-    animate(collapseP, 0, COLLAPSE_SPRING);
-  };
+    },
+  });
 
   return (
     <motion.div
@@ -358,28 +358,16 @@ export function BetSlipSheet({
           scaleX: shellScaleX,
           scaleY: shellScaleY,
           transformOrigin: 'bottom center',
-          // The collapse drag is started manually via dragControls
-          // (dragListener=false), so Framer does NOT auto-apply touch-action.
-          // Without this the mobile browser scrolls the page and steals the
-          // downward swipe. `none` when expanded lets the drag grab the gesture;
-          // `auto` when collapsed so the tiny pill never blocks page scroll.
+          // `none` when expanded so the browser doesn't scroll-steal the
+          // swipe — the raw pointer handlers (useVerticalSwipe) drive the
+          // collapse/open-list gesture. `auto` when collapsed so the tiny pill
+          // never blocks page scroll.
           touchAction: expanded ? 'none' : 'auto',
         }}
-        drag={expanded ? 'y' : false}
-        dragListener={false}
-        dragControls={dragControls}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={DRAG_ELASTIC}
-        onDragStart={onCollapseDragStart}
-        onDrag={onCollapseDragMove}
-        onDragEnd={handleCollapseDrag}
-        onPointerDown={(e) => {
-          // Start collapse-drag only from the card body — not the swipe thumb
-          // or the ×/Lista buttons (they own their gestures/taps).
-          if (!expanded) return;
-          if ((e.target as HTMLElement).closest('button')) return;
-          dragControls.start(e);
-        }}
+        onPointerDown={swipe.onPointerDown}
+        onPointerMove={swipe.onPointerMove}
+        onPointerUp={swipe.onPointerUp}
+        onPointerCancel={swipe.onPointerCancel}
       >
         {/* THE MORPHING SURFACE — one persistent, always-opaque glass element
             that reshapes (height + corner radius) between the card and the

@@ -1,13 +1,12 @@
 import {
   animate,
   motion,
-  useDragControls,
   useMotionValue,
   usePresence,
   useTransform,
-  type PanInfo,
 } from 'framer-motion';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useVerticalSwipe } from './useVerticalSwipe';
 import logoDraftea from './assets/logo-draftea.svg';
 import reuseIcon from './assets/reuse.svg';
 import shareIcon from './assets/share.svg';
@@ -333,19 +332,21 @@ export function SuccessEntrySheet({
   const cardOpacity = useTransform(openP, [0, 0.12], [0, 1]);
 
   // Swipe-down drives the shrink-morph directly (openP follows the finger 1:1).
-  const onCloseDragMove = (_e: unknown, info: PanInfo) => {
-    const range = Math.max(1, fullH.get() - START_H);
-    const p = info.offset.y > 0 ? Math.max(0, 1 - info.offset.y / range) : 1;
-    openP.set(p);
-  };
-  const handleSheetDragEnd = (_e: unknown, info: PanInfo) => {
-    if (info.offset.y > CLOSE_OFFSET_PX || info.velocity.y > CLOSE_VELOCITY) {
-      onNewEntry(); // dismiss = done → Home
-    } else {
-      animate(openP, 1, OPEN_SPRING);
-    }
-  };
-  const dragControls = useDragControls();
+  // Raw pointer events (via useVerticalSwipe) rather than Framer's drag, which
+  // failed to grab the touch gesture on real mobile browsers.
+  const swipe = useVerticalSwipe({
+    onMove: (dy) => {
+      const range = Math.max(1, fullH.get() - START_H);
+      openP.set(dy > 0 ? Math.max(0, 1 - dy / range) : 1);
+    },
+    onEnd: (dy, vy) => {
+      if (dy > CLOSE_OFFSET_PX || vy > CLOSE_VELOCITY) {
+        onNewEntry(); // dismiss = done → Home
+      } else {
+        animate(openP, 1, OPEN_SPRING);
+      }
+    },
+  });
 
   return (
     <motion.div
@@ -415,28 +416,17 @@ export function SuccessEntrySheet({
             style={{
               clipPath,
               borderColor,
-              // The close-drag is started manually via dragControls
-              // (dragListener=false), so Framer does NOT auto-apply touch-action
-              // here. Without `none`, a mobile browser claims the vertical
-              // gesture as a scroll and fires pointercancel — the swipe-down
-              // never reaches Framer, so the card can't be swiped closed (and a
-              // cancelled drag springs it back open, leaving it covering the
-              // feed). `none` lets the drag grab the gesture. The scrollable
-              // selections list re-enables vertical panning with `pan-y` (below).
+              // `none` so the browser doesn't scroll-steal the swipe-down — the
+              // raw pointer handlers (useVerticalSwipe) drive the close. Buttons
+              // and the scrollable selections list are excluded from the swipe
+              // (see useVerticalSwipe's default `exclude`), and that list
+              // re-enables vertical panning with `pan-y` (below).
               touchAction: 'none',
             }}
-            drag="y"
-            dragListener={false}
-            dragControls={dragControls}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0}
-            onDrag={onCloseDragMove}
-            onDragEnd={handleSheetDragEnd}
-            onPointerDown={(e) => {
-              const el = e.target as HTMLElement;
-              if (el.closest('button') || el.closest('[data-scroll]')) return;
-              dragControls.start(e);
-            }}
+            onPointerDown={swipe.onPointerDown}
+            onPointerMove={swipe.onPointerMove}
+            onPointerUp={swipe.onPointerUp}
+            onPointerCancel={swipe.onPointerCancel}
           >
             {/* FILL — purple pill base with the dark card fill crossfading over. */}
             <div

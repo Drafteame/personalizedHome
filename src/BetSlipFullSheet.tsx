@@ -1,13 +1,12 @@
 import {
   animate,
   motion,
-  useDragControls,
   useMotionValue,
   usePresence,
   useTransform,
-  type PanInfo,
 } from 'framer-motion';
 import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useVerticalSwipe } from './useVerticalSwipe';
 import boosterIllus from './assets/booster.png';
 import chevronRightIcon from './assets/chevron_right.svg';
 import clockIcon from './assets/clock.svg';
@@ -208,24 +207,25 @@ export function BetSlipFullSheet({
 
   // Swipe-down drives the shrink-morph directly (openP follows the finger 1:1),
   // so the card shrinks in place toward the pill — it does NOT translate like a
-  // bottom sheet. Mirrors BetSlipSheet's gesture-driven collapse.
-  const onCloseDragMove = (_e: unknown, info: PanInfo) => {
-    const range = Math.max(1, fullH.get() - START_H);
-    const p = info.offset.y > 0 ? Math.max(0, 1 - info.offset.y / range) : 1;
-    openP.set(p);
-  };
-  const handleSheetDragEnd = (_e: unknown, info: PanInfo) => {
-    // Past the threshold → commit the close (the unmount spring finishes the
-    // shrink into the pill); otherwise spring the morph back open.
-    if (info.offset.y > CLOSE_OFFSET_PX || info.velocity.y > CLOSE_VELOCITY) {
-      onClose();
-    } else {
-      animate(openP, 1, OPEN_SPRING);
-    }
-  };
-  // Close-drag is started manually so it never fires from the scrollable
-  // list, the swipe thumb, or the header buttons — only the sheet chrome.
-  const dragControls = useDragControls();
+  // bottom sheet. Raw pointer events (useVerticalSwipe) rather than Framer's
+  // drag, which failed to grab the touch gesture on real mobile browsers. The
+  // swipe never fires from the scrollable list, the swipe thumb, or the header
+  // buttons — those are excluded (buttons + [data-scroll]).
+  const swipe = useVerticalSwipe({
+    onMove: (dy) => {
+      const range = Math.max(1, fullH.get() - START_H);
+      openP.set(dy > 0 ? Math.max(0, 1 - dy / range) : 1);
+    },
+    onEnd: (dy, vy) => {
+      // Past the threshold → commit the close (the unmount spring finishes the
+      // shrink into the pill); otherwise spring the morph back open.
+      if (dy > CLOSE_OFFSET_PX || vy > CLOSE_VELOCITY) {
+        onClose();
+      } else {
+        animate(openP, 1, OPEN_SPRING);
+      }
+    },
+  });
 
   return (
     <motion.div
@@ -292,27 +292,16 @@ export function BetSlipFullSheet({
         style={{
           clipPath,
           borderColor,
-          // dragControls + dragListener=false ⇒ Framer does NOT auto-apply
-          // touch-action, so without `none` the mobile browser eats the
-          // vertical swipe-down (pointercancel) and the card can't be swiped
-          // closed. `none` lets the close-drag grab the gesture; the scrollable
-          // selections list re-enables vertical panning with `pan-y` (below).
+          // `none` so the browser doesn't scroll-steal the swipe-down — the raw
+          // pointer handlers (useVerticalSwipe) drive the close. The scroll
+          // list, swipe thumb, and buttons are excluded from the swipe; the
+          // list re-enables vertical panning with `pan-y` (below).
           touchAction: 'none',
         }}
-        drag="y"
-        dragListener={false}
-        dragControls={dragControls}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0}
-        onDrag={onCloseDragMove}
-        onDragEnd={handleSheetDragEnd}
-        onPointerDown={(e) => {
-          // Close-drag only from sheet chrome — not the scroll list, thumb,
-          // or buttons (they keep their own scroll/gesture/tap).
-          const el = e.target as HTMLElement;
-          if (el.closest('button') || el.closest('[data-scroll]')) return;
-          dragControls.start(e);
-        }}
+        onPointerDown={swipe.onPointerDown}
+        onPointerMove={swipe.onPointerMove}
+        onPointerUp={swipe.onPointerUp}
+        onPointerCancel={swipe.onPointerCancel}
       >
       {/* FILL — purple pill base (always on) with the dark card fill crossfading
           over it by `cardDarkOpacity`: full card = dark, capsule = purple. */}
