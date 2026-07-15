@@ -150,6 +150,10 @@ export function App() {
   const [lightning, setLightning] = useState(false);
   const [entryCount, setEntryCount] = useState(0);
   const [entryBump, setEntryBump] = useState(0); // Mis entradas icon "catch" bump
+  // When the success card is closed via "Reusar", the selections are kept so
+  // the slip rebuilds AFTER the flying-ticket microinteraction; every other
+  // close path clears them. Read by finishEntryCreated (the ticket's onDone).
+  const keepSelectionsRef = useRef(false);
   // Navbar compresses to an icon-only row while scrolling DOWN through the
   // offer, and springs back to full size on any scroll UP (or near the top).
   // The same signal collapses the leagues row (in HomeScreenChrome).
@@ -673,7 +677,16 @@ export function App() {
                           onRemoveGroup={removeGroup}
                           onConfirm={confirmBet}
                           onKeepAlive={() => setKeepAliveNonce((n) => n + 1)}
-                          onOpenList={() => setListOpen(true)}
+                          // The "Resumen" floating card (BetSlipFullSheet) is
+                          // reserved for 3+ selections. At 1–2 selections the
+                          // summarized slip is the only surface, so a swipe-up
+                          // is a no-op (it stays expanded) instead of opening
+                          // the floating card. Revert point: tag
+                          // `pre-resumen-3plus-gate` (drop the guard to restore
+                          // swipe-up → Resumen at any count).
+                          onOpenList={() => {
+                            if (selections.length > 2) setListOpen(true);
+                          }}
                         />
                       )}
                     </AnimatePresence>
