@@ -527,7 +527,7 @@ export function SuccessEntrySheet({
                 ref={listRef}
                 data-scroll
                 onScroll={updateFade}
-                className="no-scrollbar relative min-h-px flex-1 overflow-y-auto"
+                className="no-scrollbar relative min-h-px flex-1 overflow-y-auto px-3"
                 // The card sets touch-action:none for the close-drag; re-enable
                 // vertical touch-scrolling HERE so the (capped) selections list
                 // still scrolls on mobile when there are enough selections.
