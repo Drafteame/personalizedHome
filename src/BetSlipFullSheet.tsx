@@ -125,7 +125,7 @@ export function BetSlipFullSheet({
   // height is a spring that follows a target (canonical useSpring pattern), so
   // it grows/shrinks smoothly when opened/closed.
   const keypad = useStakeKeypad(stake, onStakeChange);
-  const KEYPAD_SLOT = KEYPAD_H + 1; // + the 1px top divider
+  const KEYPAD_SLOT = KEYPAD_H + 10; // keypad + 10px top spacing (gap above)
   const keypadTarget = useMotionValue(0);
   const keypadHeight = useSpring(keypadTarget, OPEN_SPRING);
   useEffect(() => {
@@ -417,8 +417,11 @@ export function BetSlipFullSheet({
           />
         </div>
 
-        {/* FOOTER — Monto / Momio / Ganancia + swipe to play. */}
-        <div className="flex shrink-0 flex-col gap-3 border-t border-[rgba(251,251,251,0.16)] px-[10px] pb-2 pt-[10px]">
+        {/* FOOTER — Monto / Momio / Ganancia + swipe to play. Spacing is via
+            explicit child margins (NOT a flex `gap`) so the keypad can get an
+            exact 10px above/below without the gap doubling around a 0-height
+            (closed) slot. */}
+        <div className="flex shrink-0 flex-col border-t border-[rgba(251,251,251,0.16)] px-[10px] pb-2 pt-[10px]">
           <div className="flex h-[59px] items-center gap-2">
             {/* Monto — tap to open the numeric keypad. */}
             <div className="relative flex min-w-px flex-1 flex-col items-center pt-[11px]">
@@ -476,16 +479,17 @@ export function BetSlipFullSheet({
               promos (order: Monto → keyboard → promos → checkbox → swipe). A
               spring-driven in-flow slot: it grows the footer (shrinking the
               flex-1 selections list at max card height, or growing the card when
-              there's room). `-mt-3` cancels the flex `gap-3` above it so a closed
-              (0-height) slot leaves no extra dead space between Monto and promos.
-              `data-scroll` keeps the card's close-drag from starting on it. */}
+              there's room). No top margin, so it touches the Monto row; its
+              `pt-[10px]` is the 10px gap ABOVE the keypad. The 10px gap BELOW
+              comes from the promos' `mt-[10px]`. `data-scroll` keeps the card's
+              close-drag from starting on it. */}
           <motion.div
             data-scroll
-            className="-mt-3 w-full overflow-hidden"
+            className="w-full overflow-hidden"
             style={{ height: keypadHeight, touchAction: 'pan-y' }}
             aria-hidden={!keypad.open}
           >
-            <div className="border-t border-[rgba(251,251,251,0.12)]">
+            <div className="pt-[10px]">
               <AmountKeypad
                 onDigit={keypad.pressDigit}
                 onDelete={keypad.pressDelete}
@@ -496,8 +500,10 @@ export function BetSlipFullSheet({
           </motion.div>
 
           {/* Promos — free bet + Booster. Toggles are CSS controls; the
-              countdown clock glyph is still pending its asset. */}
-          <div className="flex flex-col overflow-hidden rounded-[16px] border border-[rgba(251,251,251,0.16)]">
+              countdown clock glyph is still pending its asset. `mt-[10px]` is
+              the 10px gap BELOW the keypad (and the Monto→promos gap when the
+              keypad is closed). */}
+          <div className="mt-[10px] flex flex-col overflow-hidden rounded-[16px] border border-[rgba(251,251,251,0.16)]">
             {/* Free bet (disabled toggle) */}
             <div className="flex items-center gap-2 px-3 py-2">
               <div
@@ -574,11 +580,12 @@ export function BetSlipFullSheet({
             </div>
           </div>
 
-          {/* Accept odds changes — CSS checkbox. */}
+          {/* Accept odds changes — CSS checkbox. `mt-3` restores the footer's
+              inter-row spacing (was the removed flex `gap-3`). */}
           <button
             type="button"
             onPointerDownCapture={(e) => e.stopPropagation()}
-            className="flex items-center gap-3 px-3.5 active:opacity-70"
+            className="mt-3 flex items-center gap-3 px-3.5 active:opacity-70"
           >
             <div className="size-5 shrink-0 rounded-[6px] border-2 border-[rgba(251,251,251,0.3)]" />
             <p className="text-left text-[14px] font-medium leading-[21px] text-[rgba(251,251,251,0.7)]">
@@ -588,10 +595,11 @@ export function BetSlipFullSheet({
           </button>
 
           {/* Swipe to play — shared component (same as the summarized slip),
-              at 44px height. `data-scroll` keeps the sheet close-drag from
-              starting here WITHOUT stopping the pointerdown from reaching the
-              swipe thumb (which owns the horizontal drag gesture). */}
-          <div data-scroll>
+              at 44px height. `mt-3` restores the footer's inter-row spacing (was
+              the removed flex `gap-3`). `data-scroll` keeps the sheet close-drag
+              from starting here WITHOUT stopping the pointerdown from reaching
+              the swipe thumb (which owns the horizontal drag gesture). */}
+          <div className="mt-3" data-scroll>
             <SwipeToConfirm
               stake={keypad.displayValue}
               onConfirm={onConfirm}

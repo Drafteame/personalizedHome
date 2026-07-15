@@ -174,7 +174,7 @@ export function BetSlipSheet({
   // content ResizeObserver — the keypad is a separate layer, not measured by the
   // RO, so there's no double-count with `expandedH`. Springs open/closed so the
   // keypad slides into a growing slot.
-  const KEYPAD_SLOT = KEYPAD_H + 1; // + the 1px top divider
+  const KEYPAD_SLOT = KEYPAD_H + 10; // keypad + 10px top spacing (gap above)
   // A spring that FOLLOWS a target motion value: setting the target animates the
   // output toward it (the canonical useSpring pattern). Setting a bare
   // useSpring's own value does NOT animate, which made the slot lag behind
@@ -582,7 +582,10 @@ export function BetSlipSheet({
             }}
             aria-hidden={!keypad.open}
           >
-            <div className="border-t border-[rgba(251,251,251,0.12)]">
+            {/* 10px top pad = the gap ABOVE the keypad (revealed as the slot
+                springs open; Monto row has no bottom padding so it's exactly
+                10px). The gap BELOW comes from the swipe's pt-[10px]. */}
+            <div className="pt-[10px]">
               <AmountKeypad
                 onDigit={onKeypadDigit}
                 onDelete={onKeypadDelete}
@@ -594,8 +597,9 @@ export function BetSlipSheet({
 
           {/* Swipe to confirm — shared component (remounts on collapse via key
               so its swipe/loader state resets). Stays pinned at the card bottom;
-              the keypad slot above pushes the rest up. */}
-          <div className="flex w-full flex-col px-[10px] pb-[10px] pt-2">
+              the keypad slot above pushes the rest up. `pt-[10px]` is the 10px
+              gap BELOW the keypad (and the Monto→swipe gap when it's closed). */}
+          <div className="flex w-full flex-col px-[10px] pb-[10px] pt-[10px]">
             <SwipeToConfirm
               key={expanded ? 'expanded' : 'collapsed'}
               stake={keypad.displayValue}
