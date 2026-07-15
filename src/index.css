@@ -364,12 +364,6 @@ body {
   100% { transform: scale(1); }
 }
 
-/* "¿Reusar o compartir?" prompt entrance (post-entry-created). */
-@keyframes promptIn {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
 /* Text-input caret blink — hard on/off (step) so it reads as a cursor, used by
    the amount field while the numeric keypad is open (AmountKeypad). */
 @keyframes caretBlink {

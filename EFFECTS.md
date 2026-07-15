@@ -256,12 +256,12 @@ These are the "One Click Bet" exploration effects, distinct from the tier-progre
 **Swipe-to-confirm** (`BetSlipSheet` + `BetSlipFullSheet`)
 - Confirms **only** when the thumb reaches the measured end of the track (not a fixed px). On completion the thumb pins and shows a spinner for `CONFIRM_LOADER_MS` (900ms, simulated ticket creation) before firing the success flow.
 
-**Success animation** (`EntryCreatedOverlay.tsx`) — ONE ticket shape for every success flow (swipe-confirm on the expanded slip, swipe-to-play on the Resumen full sheet, AND lightning bet)
+**Success animation** (`EntryCreatedOverlay.tsx`) — ONE ticket shape, played as a brief microinteraction. It fires **after the floating success card (`SuccessEntrySheet`) is closed** (the swipe-confirm / Resumen flows show that card first; closing it via "Entrada nueva" / swipe-down / backdrop OR "Reusar" plays the ticket), and for the **lightning bet** (which skips the card). The card has already delivered the "entry created" message, so the ticket is intentionally quick — a glance, then it flies to the tab.
 - **Shape:** a green **ticket/stub** (Figma 33822:171080) — **233×108**, rounded corners + a semicircular notch on the mid-left/right edges, drawn as the exact Figma vector path (`TICKET_FILL_PATH`, viewBox `16 16 233 108`). Radial-green fill (`#29C28A→#1DAC7C→#059669` @95%), gradient rim stroke (`#34D399`@56%→`#1B6D4F`), green glow (`#36E5A9`@36%) via a wrapper `drop-shadow`. A centered stroke clipped by the SVG viewport reads as Figma's inside stroke. Sits 12px above the navbar, centered via `left:50%`+`marginLeft` (not a transform, to avoid subpixel edge glitches). `cfg.ticket`.
 - **Icon + message:** the 36px checkmark (`src/assets/success-check.png`) above **`¡ENTRADA CREADA!`** (uppercase, Red Hat Display Black Italic, 14px/21px, `#fbfbfb`).
-- **Entrance:** circular clip-path reveal (`greenCircleIn`) + check/text pop (`greenContentIn`, same 0.2s timing/easing as the reveal). The ticket stays **upright** throughout (message read level).
-- **On reveal-complete:** green spark burst (recolored T4 fire-spark dots), a squash/stretch "pop" (`cfg.pop`), and a green glow flash.
-- **Hold:** stays upright + readable for `cfg.confirmedHoldMs` (1700ms) before the flight.
+- **Entrance:** circular clip-path reveal (`greenCircleIn`) + check/text pop (`greenContentIn`, same 0.16s timing/easing as the reveal). The ticket stays **upright** throughout (message read level).
+- **On reveal-complete:** green spark burst (recolored T4 fire-spark dots, quick 300–500ms), a squash/stretch "pop" (`cfg.pop`), and a green glow flash.
+- **Hold:** brief — stays upright for `cfg.confirmedHoldMs` (600ms) before the flight, so the whole thing reads as a quick microinteraction rather than a status screen.
 - **Flight:** genie into "Mis entradas" — snappy y + x springs launched together (no anticipation); the shrink, squash/stretch and **opacity fade are all driven by overall flight PROGRESS (both axes)** — the path is a short near-horizontal diagonal, so a y-only fade blinked it out early. As it flies it **leans left**, growing with flight progress (`cfg.genie.flightTiltDeg`, ~-8°; 0 at launch so it matches the upright resting ticket) plus a subtle velocity wobble. Stays fully visible through the trajectory, fades over the last ~15%. `onCatch` bumps the tab icon on arrival; `onDone` finishes.
 
 **Lightning Straight Bet** (`useLongPress` in `HomeScreen.tsx`, `lightningBet()` in `App.tsx`)
@@ -270,10 +270,9 @@ These are the "One Click Bet" exploration effects, distinct from the tier-progre
 **Sticky header** (`HomeScreenChrome` in `HomeScreen.tsx`)
 - Two-tier CSS sticky: topbar (status + logo/balance) pins at `top:0`; match tabs + pill markets pin just below it (offset = measured topbar height); the league tabs scroll away/hide under the topbar. Pure CSS, no scroll listener.
 
-**Post-entry actions** (`App.tsx` + `Navbar` in `HomeScreen.tsx`) — Figma "navbarFooter" 33563:154460
-- **Count badge:** `#3d3d3d` pill, 2px `#191919` ring, bold white count at the icon's top-right. Squash-stretch pop on appear (`@keyframes badgePop`, keyed per entry to replay) + opacity fade-out.
-- **Action buttons:** 44px circular reuse / share / discard (`#191919` fill, `rgba(251,251,251,0.16)` border), 12px above the navbar, slide-in (`promptIn`) + fade-out.
-- **Shared 5s window:** the badge and the action buttons appear together and auto-hide **together** after 5s (one timer keyed to each entry). Both fade out (opacity transition + delayed unmount), not a hard pop.
+**Post-entry count badge** (`App.tsx` + `Navbar` in `HomeScreen.tsx`) — Figma "navbarFooter" 33563:154460
+- **Count badge:** `#3d3d3d` pill, 2px `#191919` ring, bold white count at the "Mis entradas" icon's top-right. Appears once the flying ticket lands (entry recorded), squash-stretch pop on appear (`@keyframes badgePop`, keyed per entry to replay), then auto-hides after a 5s window (opacity fade-out + delayed unmount, not a hard pop).
+- **No action buttons:** the old "¿Reusar o compartir tu entrada?" reuse / share / discard row is **gone** — those actions now live inside the floating success card (`SuccessEntrySheet`), so the ticket flow shows ONLY the ticket + the count badge.
 
 ---
 

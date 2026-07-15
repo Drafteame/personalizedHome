@@ -4,9 +4,6 @@ import { tierForOdds, type ButtonLiveState } from './ButtonPreviewMomios';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
 import { playSelectionHaptic, playTierCrossingHaptic } from './haptics';
 import { HomeScreenChrome, MOCK_PICKS, Navbar } from './HomeScreen';
-import closeIcon from './assets/close.svg';
-import compartirIcon from './assets/compartir.svg';
-import reusarIcon from './assets/reusar.svg';
 import { BetSlipFullSheet } from './BetSlipFullSheet';
 import { BetSlipSheet } from './BetSlipSheet';
 import { EntryCreatedOverlay } from './EntryCreatedOverlay';
@@ -165,35 +162,18 @@ export function App() {
   const [navCompact, setNavCompact] = useState(false);
   const lastScrollTopRef = useRef(0);
   const navLockRef = useRef(0);
-  const [promptOpen, setPromptOpen] = useState(false);
   // Entry-count badge over "Mis entradas": appears on each new entry, holds
-  // 10s, then hides. Re-shown (timer reset) every time the count changes.
+  // 5s, then hides. Re-shown (timer reset) every time the count changes. (The
+  // old "¿Reusar o compartir?" action row that used to appear alongside it is
+  // gone — those actions now live inside the floating success card.)
   const [badgeVisible, setBadgeVisible] = useState(false);
-  // Post-entry: the count badge AND the action buttons appear together and
-  // auto-hide TOGETHER after 5s of no interaction. One timer per entry, so
-  // they disappear at the same moment.
   useEffect(() => {
     if (entryCount === 0) return;
     setBadgeVisible(true);
-    const t = setTimeout(() => {
-      setBadgeVisible(false);
-      setPromptOpen(false);
-    }, 5000);
+    const t = setTimeout(() => setBadgeVisible(false), 5000);
     return () => clearTimeout(t);
   }, [entryCount]);
 
-  // Keep the action buttons mounted through a fade-out before unmounting —
-  // same treatment as the badge, so both ease out instead of popping.
-  const promptShown = promptOpen && selections.length === 0;
-  const [promptMounted, setPromptMounted] = useState(false);
-  useEffect(() => {
-    if (promptShown) {
-      setPromptMounted(true);
-      return;
-    }
-    const t = setTimeout(() => setPromptMounted(false), 250); // after fade-out
-    return () => clearTimeout(t);
-  }, [promptShown]);
   // Bumped on swipe-to-confirm interaction to defer the auto-collapse timer.
   const [keepAliveNonce, setKeepAliveNonce] = useState(0);
   const prevCountRef = useRef(0);
@@ -277,23 +257,23 @@ export function App() {
     setEntrySheet(true);
   }, []);
 
-  // Entrada nueva / swipe-down / backdrop-tap on the success sheet → record the
-  // entry, clear the slip, and return Home.
+  // Entrada nueva / swipe-down / backdrop-tap on the success sheet → close the
+  // card and play the flying-ticket microinteraction. The entry is recorded (+
+  // the count badge pops) only once the ticket lands, in finishEntryCreated.
   const successNewEntry = useCallback(() => {
+    keepSelectionsRef.current = false; // fresh slip after the ticket
     setEntrySheet(false);
-    setSelections([]);
     setExpanded(false);
-    setStake(DEFAULT_STAKE); // fresh slip → default amount
-    setEntryCount((c) => c + 1);
-    setEntryBump((n) => n + 1);
+    setSuccess(true);
   }, []);
 
-  // Reusar → record the entry but KEEP the selections so a fresh slip rebuilds
-  // (the sheet shrinks back into the re-mounted pill).
+  // Reusar → same flying-ticket close, but KEEP the selections so a fresh slip
+  // rebuilds once the ticket lands (finishEntryCreated skips the clear).
   const successReuse = useCallback(() => {
+    keepSelectionsRef.current = true;
     setEntrySheet(false);
-    setEntryCount((c) => c + 1);
-    setEntryBump((n) => n + 1);
+    setExpanded(false);
+    setSuccess(true);
   }, []);
 
   // LIGHTNING STRAIGHT BET — long-press a pick to create the entry instantly.
@@ -313,15 +293,21 @@ export function App() {
     window.setTimeout(() => setSuccess(true), LIGHTNING_SELECT_MS);
   }, []);
 
-  // Fired when the green ticket has flown into Mis entradas.
+  // Fired when the green ticket has flown into Mis entradas. Records the entry
+  // and pops the tab count badge. NOTE: no "¿Reusar o compartir?" prompt — the
+  // reuse/share actions now live inside the floating success card, so the
+  // ticket flow shows ONLY the ticket + the count badge.
   const finishEntryCreated = useCallback(() => {
     setSuccess(false);
     setLightning(false);
-    setSelections([]);
+    // Reusar keeps the selections so the slip rebuilds; all other paths clear.
+    if (!keepSelectionsRef.current) {
+      setSelections([]);
+      setStake(DEFAULT_STAKE); // fresh slip → default amount
+    }
+    keepSelectionsRef.current = false;
     setExpanded(false);
-    setStake(DEFAULT_STAKE); // fresh slip → default amount
     setEntryCount((c) => c + 1);
-    setPromptOpen(true);
   }, []);
 
   /* ---------- tier-crossing haptic ---------- */
@@ -638,17 +624,16 @@ export function App() {
                 {/* Reserved-height slot. The slip is anchored to its BOTTOM
                     (against the navbar), so this height only controls how far
                     the dark gradient extends ABOVE the slip. It reserves the
-                    full height while the slip (or the post-success prompt) is
-                    on screen — giving the gradient enough reach to separate
-                    the slip from the content — and collapses to 0 otherwise so
-                    the gradient shrinks to just the navbar band. */}
+                    full height while the slip is on screen — giving the
+                    gradient enough reach to separate the slip from the content
+                    — and collapses to 0 otherwise so the gradient shrinks to
+                    just the navbar band. */}
                 <div
                   className="relative transition-[height] duration-300 ease-out"
                   style={{
-                    height:
-                      betSlipVisible || promptMounted
-                        ? buttonProgressionConfig.slotReservedHeightPx
-                        : 0,
+                    height: betSlipVisible
+                      ? buttonProgressionConfig.slotReservedHeightPx
+                      : 0,
                   }}
                 >
                   {/* BET SLIP — a single morphing sheet (collapsed pill ↔
@@ -690,54 +675,6 @@ export function App() {
                         />
                       )}
                     </AnimatePresence>
-
-                    {/* Post-success "¿Reusar o compartir tu entrada?" prompt —
-                        shown once an entry is created (slip gone). */}
-                    {promptMounted && (
-                      <div
-                        key={entryCount}
-                        className={`absolute inset-x-0 bottom-3 flex items-center justify-between gap-2 px-4 transition-opacity duration-200 ease-out ${
-                          promptShown
-                            ? 'opacity-100 animate-[promptIn_0.4s_ease-out]'
-                            : 'opacity-0'
-                        }`}
-                        style={{ fontFamily: "'Red Hat Display', sans-serif" }}
-                      >
-                        {/* Post-entry actions — Figma "entry actions"
-                            (33563:154461): text + reuse/share pill buttons, a
-                            divider, then the discard (×) button. All three are
-                            44px circles: #191919 fill, rgba(251,251,251,0.16)
-                            border, 20px icons. */}
-                        <p className="w-[127px] text-[14px] font-normal leading-[21px] text-[#fbfbfb]">
-                          ¿Reusar o compartir tu entrada?
-                        </p>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <button
-                            type="button"
-                            aria-label="Reusar entrada"
-                            className="flex size-11 items-center justify-center rounded-full border border-[rgba(251,251,251,0.16)] bg-[#191919] transition-transform active:scale-95"
-                          >
-                            <img src={reusarIcon} alt="" className="size-5" />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Compartir entrada"
-                            className="flex size-11 items-center justify-center rounded-full border border-[rgba(251,251,251,0.16)] bg-[#191919] transition-transform active:scale-95"
-                          >
-                            <img src={compartirIcon} alt="" className="size-5" />
-                          </button>
-                          <div className="h-[21px] w-px bg-[rgba(251,251,251,0.16)]" />
-                          <button
-                            type="button"
-                            aria-label="Descartar"
-                            onClick={() => setPromptOpen(false)}
-                            className="flex size-11 items-center justify-center rounded-full border border-[rgba(251,251,251,0.16)] bg-[#191919] transition-transform active:scale-95"
-                          >
-                            <img src={closeIcon} alt="" className="size-5" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
                 <Navbar
@@ -775,10 +712,11 @@ export function App() {
               )}
             </AnimatePresence>
 
-            {/* Swipe-to-confirm success — green "Entrada creada" card that
-                flies into Mis entradas, then finishEntryCreated() pops the
-                badge + "¿Reusar?" prompt. Used ONLY by the lightning bet now;
-                swipe-to-confirm opens the SuccessEntrySheet below. */}
+            {/* Flying-ticket microinteraction — the green ticket that flies
+                into Mis entradas, then finishEntryCreated() records the entry +
+                pops the count badge (no reuse/share prompt). Plays AFTER the
+                floating success card is closed (successNewEntry / successReuse
+                set `success`), and for the lightning long-press. */}
             {success && (
               <EntryCreatedOverlay
                 onCatch={() => setEntryBump((n) => n + 1)}

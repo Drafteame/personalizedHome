@@ -36,9 +36,11 @@ import checkIcon from './assets/success-check.png';
  */
 
 const cfg = {
-  // How long the ticket holds in place (readable) before the genie flight —
-  // long enough to comfortably read "¡ENTRADA CREADA!".
-  confirmedHoldMs: 1700,
+  // How long the ticket holds in place before the genie flight. Kept SHORT so
+  // the whole thing reads as a brief microinteraction (the success card the
+  // user just closed already delivered the "entry created" message) rather
+  // than a primary status screen — a quick glance, then it flies to the tab.
+  confirmedHoldMs: 600,
   // Ticket geometry (Figma 33822:171080). The shape itself (rounded corners +
   // mid-edge notches) is the exact Figma vector `TICKET_FILL_PATH`, authored in
   // a 16..249 / 16..124 space, so the SVG uses viewBox `TICKET_VIEWBOX`.
@@ -56,8 +58,8 @@ const cfg = {
     distanceMaxPx: 72,
     sizeMinPx: 3,
     sizeMaxPx: 7,
-    durationMinMs: 420,
-    durationMaxMs: 700,
+    durationMinMs: 300,
+    durationMaxMs: 500,
     angleJitterRad: 0.3, // deviation from the pure radial direction
   },
   // Explosion "pop" on the ticket when the reveal completes (fires with the
@@ -70,9 +72,9 @@ const cfg = {
     glowDecayMs: 620, // glow flashes to peak, then eases back to base
   },
   genie: {
-    // Fast, snappy flight — movement + shrink reach the tab in ~215ms.
-    y: { stiffness: 550, damping: 34, mass: 0.55 },
-    x: { stiffness: 580, damping: 36, mass: 0.5 },
+    // Fast, snappy flight — movement + shrink reach the tab in ~170ms.
+    y: { stiffness: 620, damping: 33, mass: 0.5 },
+    x: { stiffness: 650, damping: 35, mass: 0.45 },
     deformSmoothing: { stiffness: 220, damping: 30, mass: 1 },
     velocitySmoothing: { stiffness: 200, damping: 30, mass: 1 },
     // GRADUAL shrink — the ticket stays a recognizable (if small) card most of
@@ -168,7 +170,7 @@ function TicketFace({ entering = false }: { entering?: boolean }) {
       </svg>
       <div
         className={`absolute inset-0 flex flex-col items-center justify-center gap-1${
-          entering ? ' animate-[greenContentIn_0.2s_cubic-bezier(0.16,1,0.3,1)]' : ''
+          entering ? ' animate-[greenContentIn_0.16s_cubic-bezier(0.16,1,0.3,1)]' : ''
         }`}
       >
         <img src={checkIcon} alt="" width={36} height={36} aria-hidden />
@@ -450,7 +452,7 @@ export function EntryCreatedOverlay({
           }}
         >
           <div
-            className="absolute inset-0 animate-[greenCircleIn_0.2s_cubic-bezier(0.16,1,0.3,1)]"
+            className="absolute inset-0 animate-[greenCircleIn_0.16s_cubic-bezier(0.16,1,0.3,1)]"
             onAnimationEnd={(e) => {
               if (e.animationName === 'greenCircleIn') handleRevealEnd();
             }}
