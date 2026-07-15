@@ -1,4 +1,3 @@
-import closeIcon from './assets/close.svg';
 import shieldIcon from './assets/shield.svg';
 import { groupSelections, type MatchInfo } from './betSlipGrouping';
 import type { Selection } from './types';
@@ -46,27 +45,27 @@ const X_MARKET = 'rgba(251,251,251,0.5)'; // same as the market label
 const X_DEFAULT = 'rgba(251,251,251,0.7)';
 
 /**
- * CloseGlyph — the × icon rendered as a CSS mask so it can be tinted any color
- * (the source close.svg has a fixed fill, so an <img> can't be recolored).
+ * CloseGlyph — the × icon, drawn as an INLINE svg so its color is set directly
+ * (via `fill`) and it needs no external asset. The path is close.svg verbatim.
+ * (A CSS `mask-image: url(close.svg)` broke in the production build: Vite inlines
+ * the small SVG as a url-encoded data URI whose unescaped `"`/`#` corrupt the
+ * mask URL → the glyph rendered as a solid box.)
  */
 function CloseGlyph({ color, size = 16 }: { color: string; size?: number }) {
   return (
-    <span
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
       aria-hidden
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: color,
-        WebkitMaskImage: `url(${closeIcon})`,
-        maskImage: `url(${closeIcon})`,
-        WebkitMaskRepeat: 'no-repeat',
-        maskRepeat: 'no-repeat',
-        WebkitMaskPosition: 'center',
-        maskPosition: 'center',
-        WebkitMaskSize: 'contain',
-        maskSize: 'contain',
-      }}
-    />
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M10.0634 2.59645C10.2456 2.41421 10.2456 2.11873 10.0634 1.93649C9.88112 1.75424 9.58564 1.75424 9.4034 1.93649L6.00005 5.33984L2.5967 1.93649C2.41445 1.75424 2.11898 1.75424 1.93673 1.93649C1.75449 2.11873 1.75449 2.41421 1.93673 2.59645L5.34008 5.9998L1.93673 9.40315C1.75449 9.5854 1.75449 9.88088 1.93673 10.0631C2.11898 10.2454 2.41445 10.2454 2.5967 10.0631L6.00005 6.65977L9.4034 10.0631C9.58564 10.2454 9.88112 10.2454 10.0634 10.0631C10.2456 9.88088 10.2456 9.5854 10.0634 9.40315L6.66001 5.9998L10.0634 2.59645Z"
+        fill={color}
+      />
+    </svg>
   );
 }
 

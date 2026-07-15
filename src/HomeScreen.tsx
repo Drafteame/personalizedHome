@@ -576,17 +576,29 @@ function PromoCarousel({
   onLightningBet,
 }: PromoCarouselProps) {
   const bindPick = useLongPress(onLightningBet, onTogglePick);
-  // Horizontal scroll-snap carousel over every match on the feed. The active
-  // dot tracks the card nearest the scrollport's left edge.
+  // Horizontal scroll-snap carousel over every match on the feed. Cards
+  // snap-CENTER, so an intermediate card rests centered in the carousel (the
+  // first/last rest at the edges, held there by the scroll bounds). The active
+  // dot tracks whichever card's center is nearest the carousel's center —
+  // measured from live rects so it stays correct for center snapping.
   const scrollRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const first = el.firstElementChild as HTMLElement | null;
-    const step = first ? first.offsetWidth + 8 /* gap-2 */ : 1;
-    const idx = Math.round(el.scrollLeft / step);
-    setActive(Math.max(0, Math.min(MATCHES.length - 1, idx)));
+    const r = el.getBoundingClientRect();
+    const center = r.left + r.width / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    [...el.children].forEach((k, i) => {
+      const kr = (k as HTMLElement).getBoundingClientRect();
+      const dist = Math.abs(kr.left + kr.width / 2 - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    });
+    setActive(Math.max(0, Math.min(MATCHES.length - 1, best)));
   };
 
   return (
@@ -596,10 +608,9 @@ function PromoCarousel({
         ref={scrollRef}
         onScroll={onScroll}
         className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-3"
-        style={{ scrollPaddingLeft: 12 }}
       >
         {MATCHES.map((m) => (
-          <div key={m.matchId} className="w-[86%] shrink-0 snap-start">
+          <div key={m.matchId} className="w-[86%] shrink-0 snap-center">
             <MatchCard
               match={m}
               selectedIds={selectedIds}
