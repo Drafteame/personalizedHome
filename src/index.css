@@ -397,3 +397,27 @@ body {
   45% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
+
+/* Gradient STROKE for the experimental summarized-slip booster (Figma
+   "booster" 34464:67859) — the border is a 50° orange→pink gradient (same
+   as the illustration chip), not a solid color. A masked ::before paints the
+   gradient only in the 1px ring so the interior stays transparent (the purple
+   glass shows through). Radius is inherited from the element (rounded-[20px]). */
+.booster-gradient-border {
+  position: relative;
+}
+.booster-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px; /* stroke weight */
+  border-radius: inherit;
+  /* 50% opacity → a dimmer stroke than the full-strength illustration gradient. */
+  background: linear-gradient(50deg, rgba(255, 166, 91, 0.5) 2%, rgba(240, 171, 252, 0.5) 103%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}

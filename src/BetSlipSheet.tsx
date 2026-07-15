@@ -13,6 +13,7 @@ import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
 import { ButtonPreviewMomios } from './ButtonPreviewMomios';
 import { SelectionGroups } from './SelectionGroups';
+import { SummarizedBooster } from './SummarizedBooster';
 import { SwipeToConfirm } from './SwipeToConfirm';
 import { useStakeKeypad } from './useStakeKeypad';
 import type { Selection } from './types';
@@ -594,6 +595,16 @@ export function BetSlipSheet({
               />
             </div>
           </motion.div>
+
+          {/* BOOSTER — experimental incentive row. Sits directly below the Monto
+              stake (keypad closed) or directly below the keypad (keypad open),
+              since the bottom-anchored keypad slot above grows between them. Its
+              own pt-[10px] is the 10px gap above; the swipe's pt-[10px] is the
+              gap below — so all sections keep the 10px rhythm. Self-contained:
+              returns null when SUMMARIZED_BOOSTER_ENABLED is false (then the
+              swipe's pt-[10px] becomes the keypad→swipe / Monto→swipe gap as
+              before), so it never affects the rest of the slip when removed. */}
+          <SummarizedBooster />
 
           {/* Swipe to confirm — shared component (remounts on collapse via key
               so its swipe/loader state resets). Stays pinned at the card bottom;
