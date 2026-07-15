@@ -584,7 +584,7 @@ function PromoCarousel({
     const el = scrollRef.current;
     if (!el) return;
     const first = el.firstElementChild as HTMLElement | null;
-    const step = first ? first.offsetWidth + 12 /* gap-3 */ : 1;
+    const step = first ? first.offsetWidth + 8 /* gap-2 */ : 1;
     const idx = Math.round(el.scrollLeft / step);
     setActive(Math.max(0, Math.min(MATCHES.length - 1, idx)));
   };
@@ -595,7 +595,7 @@ function PromoCarousel({
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto px-3"
+        className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-3"
         style={{ scrollPaddingLeft: 12 }}
       >
         {MATCHES.map((m) => (
