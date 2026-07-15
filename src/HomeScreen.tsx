@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import betsIcon from './assets/bets.svg';
 import chevronIcon from './assets/chevron.svg';
 import gamingIcon from './assets/gaming.svg';
@@ -1017,45 +1017,27 @@ export function HomeScreenChrome({
   onLightningBet,
   headerCollapsed = false,
 }: HomeScreenChromeProps) {
-  // Two-tier sticky header: the topbar (status + logo/balance) pins at the
-  // very top; the leagues row + match tabs + pill markets pin just below it
-  // (so we measure the topbar's height). The leagues row lives at the top of
-  // that pinned stack and collapses on scroll-down / reappears on scroll-up.
-  const topbarRef = useRef<HTMLDivElement>(null);
-  // The leagues/tabs tier pins to the BOTTOM of the topbar, so its offset must
-  // equal the topbar's live height. We measure it rather than hardcode a value
-  // (it changed when the fake status bar was removed) so the tier always sits
-  // flush against the real header with no gap. useLayoutEffect measures BEFORE
-  // the first paint (no wrong-offset flash), and a ResizeObserver keeps it in
-  // sync across viewport-height changes (mobile address-bar show/hide, the
-  // desktop-only status-bar padding, font reflow, etc.).
-  const [topbarH, setTopbarH] = useState(0);
-  useLayoutEffect(() => {
-    const el = topbarRef.current;
-    if (!el) return;
-    const measure = () => setTopbarH(el.offsetHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener('resize', measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
   return (
     <div className="flex w-full flex-col">
-      {/* TOPBAR — always pinned. Opaque so content scrolls under it; the top
-          decorative glow lives here (moved from App) so it stays with it.
+      {/* PINNED HEADER — ONE sticky surface holding the logo/balance bar, the
+          leagues row, the match tabs and the pill markets. It's a SINGLE tier
+          (not two) so the decorative glow can span behind ALL of it as one
+          continuous layer instead of being trapped behind just the logo bar:
+            • bg-black base — opaque, hides the feed scrolling underneath.
+            • glow (z-0) — floats above the black base but below every element,
+              so it reads as light BEHIND the header + leagues and never paints
+              on top of any component. Kept at h-100 (the previous extension)
+              so it reaches down through the leagues and fades via its own blur.
+            • overflow-hidden — clips the blurred tail at the header's bottom
+              edge so it can never bleed onto the feed below (in either the
+              expanded or collapsed state); when expanded the glow has already
+              faded to nothing well above that edge, so there's no visible cut.
+            • content (relative z-10) — Header, leagues (collapsible), tabs,
+              pills, all above the glow.
           On the desktop phone-mockup (min-[431px]) we add back the vertical
-          space the old fake status bar occupied so the header clears the
-          notch and doesn't butt against the top edge. On real mobile the
-          device's own status bar already provides that inset, so no padding. */}
-      <div
-        ref={topbarRef}
-        className="sticky top-0 z-30 bg-black min-[431px]:pt-11"
-      >
+          space the old fake status bar occupied so the header clears the notch;
+          real mobile relies on the device's own status bar for that inset. */}
+      <div className="sticky top-0 z-30 overflow-hidden bg-black min-[431px]:pt-11">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[100px]"
@@ -1068,28 +1050,18 @@ export function HomeScreenChrome({
         />
         <div className="relative z-10">
           <Header />
+          {/* Leagues row collapses (height + opacity) on scroll-down and
+              springs back on scroll-up. */}
+          <div
+            className={`overflow-hidden transition-all duration-[250ms] ease-out ${
+              headerCollapsed ? 'max-h-0 opacity-0' : 'max-h-[96px] opacity-100'
+            }`}
+          >
+            <LeaguesTab />
+          </div>
+          <MatchTabsRow />
+          <TabsAndPills />
         </div>
-      </div>
-
-      {/* PINNED HEADER STACK — leagues row + match tabs + pill markets, all
-          pinned just below the topbar. The leagues row collapses (height +
-          opacity) while scrolling down and springs back on scroll-up.
-          z-30 (same level as the topbar, but LATER in the DOM so it paints
-          above it): the topbar's decorative glow is a blurred 100px element
-          that overhangs ~56px past the now-44px header, so this opaque
-          bg-black tier must sit ABOVE that overhang to cover it — otherwise
-          the glow bleeds on top of the leagues row. The tiers never overlap
-          spatially, so the equal z-index is safe. */}
-      <div className="sticky z-30 bg-black" style={{ top: topbarH }}>
-        <div
-          className={`overflow-hidden transition-all duration-[250ms] ease-out ${
-            headerCollapsed ? 'max-h-0 opacity-0' : 'max-h-[96px] opacity-100'
-          }`}
-        >
-          <LeaguesTab />
-        </div>
-        <MatchTabsRow />
-        <TabsAndPills />
       </div>
 
       <PromoCarousel

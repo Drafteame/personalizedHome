@@ -472,6 +472,29 @@ export function BetSlipFullSheet({
             </div>
           </div>
 
+          {/* NUMERIC KEYPAD — sits directly below the stake amount and ABOVE the
+              promos (order: Monto → keyboard → promos → checkbox → swipe). A
+              spring-driven in-flow slot: it grows the footer (shrinking the
+              flex-1 selections list at max card height, or growing the card when
+              there's room). `-mt-3` cancels the flex `gap-3` above it so a closed
+              (0-height) slot leaves no extra dead space between Monto and promos.
+              `data-scroll` keeps the card's close-drag from starting on it. */}
+          <motion.div
+            data-scroll
+            className="-mt-3 w-full overflow-hidden"
+            style={{ height: keypadHeight, touchAction: 'pan-y' }}
+            aria-hidden={!keypad.open}
+          >
+            <div className="border-t border-[rgba(251,251,251,0.12)]">
+              <AmountKeypad
+                onDigit={keypad.pressDigit}
+                onDelete={keypad.pressDelete}
+                onDone={keypad.done}
+                onSwipeDown={onClose}
+              />
+            </div>
+          </motion.div>
+
           {/* Promos — free bet + Booster. Toggles are CSS controls; the
               countdown clock glyph is still pending its asset. */}
           <div className="flex flex-col overflow-hidden rounded-[16px] border border-[rgba(251,251,251,0.16)]">
@@ -576,28 +599,6 @@ export function BetSlipFullSheet({
             />
           </div>
         </div>
-
-        {/* NUMERIC KEYPAD — a spring-driven `shrink-0` slot below the footer.
-            Its height grows to the keypad when open, shrinking the (flex-1)
-            selections list at max card height or growing the card when there's
-            room. Always mounted (height 0 when closed) + clipped, so it doesn't
-            rely on a mount animation. `data-scroll` keeps the card's close-drag
-            from starting on it. */}
-        <motion.div
-          data-scroll
-          className="w-full shrink-0 overflow-hidden"
-          style={{ height: keypadHeight, touchAction: 'pan-y' }}
-          aria-hidden={!keypad.open}
-        >
-          <div className="border-t border-[rgba(251,251,251,0.12)]">
-            <AmountKeypad
-              onDigit={keypad.pressDigit}
-              onDelete={keypad.pressDelete}
-              onDone={keypad.done}
-              onSwipeDown={onClose}
-            />
-          </div>
-        </motion.div>
       </motion.div>
       </motion.div>
       </motion.div>
