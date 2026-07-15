@@ -1073,8 +1073,14 @@ export function HomeScreenChrome({
 
       {/* PINNED HEADER STACK — leagues row + match tabs + pill markets, all
           pinned just below the topbar. The leagues row collapses (height +
-          opacity) while scrolling down and springs back on scroll-up. */}
-      <div className="sticky z-20 bg-black" style={{ top: topbarH }}>
+          opacity) while scrolling down and springs back on scroll-up.
+          z-30 (same level as the topbar, but LATER in the DOM so it paints
+          above it): the topbar's decorative glow is a blurred 100px element
+          that overhangs ~56px past the now-44px header, so this opaque
+          bg-black tier must sit ABOVE that overhang to cover it — otherwise
+          the glow bleeds on top of the leagues row. The tiers never overlap
+          spatially, so the equal z-index is safe. */}
+      <div className="sticky z-30 bg-black" style={{ top: topbarH }}>
         <div
           className={`overflow-hidden transition-all duration-[250ms] ease-out ${
             headerCollapsed ? 'max-h-0 opacity-0' : 'max-h-[96px] opacity-100'

@@ -249,6 +249,11 @@ export function BetSlipSheet({
     const el = contentRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
+      // The keypad now lives INSIDE the measured content (between Monto and the
+      // swipe). Its height is added to the shell separately via `keypadOffsetH`,
+      // so skip measuring while it's open/animating — otherwise its height would
+      // be double-counted in `expandedH`. Base height is captured when closed.
+      if (keypadOffsetH.get() > 0.5) return;
       const target = el.offsetHeight + BOTTOM_INSET;
       if (target <= 0) return; // pre-layout
       if (!measuredOnceRef.current) {
@@ -285,9 +290,6 @@ export function BetSlipSheet({
       return gExpanded + (COLLAPSED_GLASS_H - gExpanded) * p;
     },
   );
-  // Content sits ABOVE the keypad slot — its bottom lifts by the keypad height
-  // so the two stack (keypad docked at the card's bottom edge, controls above).
-  const contentBottom = useTransform(keypadOffsetH, (kh) => BOTTOM_INSET + kh);
   // Keypad fades in over the first part of its reveal.
   const keypadOpacity = useTransform(
     keypadOffsetH,
@@ -492,9 +494,8 @@ export function BetSlipSheet({
              transition differs — and the glass grows in lockstep behind it. */}
         <motion.div
           ref={contentRef}
-          className="absolute inset-x-4 flex flex-col"
+          className="absolute inset-x-4 bottom-2 flex flex-col"
           style={{
-            bottom: contentBottom,
             opacity: cardContentOpacity,
             pointerEvents: expanded ? 'auto' : 'none',
           }}
@@ -566,38 +567,40 @@ export function BetSlipSheet({
             </div>
           </div>
 
+          {/* NUMERIC KEYPAD — sits BETWEEN the Monto row and the swipe button.
+              An in-flow slot whose height (`keypadOffsetH`) grows the slip: the
+              content is bottom-anchored so the swipe stays pinned at the bottom
+              while the keypad pushes Monto (and above) upward. Its height is
+              added to the shell/glass height separately (and excluded from the
+              RO base measurement), so no ResizeObserver dependency / double-count. */}
+          <motion.div
+            className="w-full overflow-hidden"
+            style={{
+              height: keypadOffsetH,
+              opacity: keypadOpacity,
+              pointerEvents: keypad.open ? 'auto' : 'none',
+            }}
+            aria-hidden={!keypad.open}
+          >
+            <div className="border-t border-[rgba(251,251,251,0.12)]">
+              <AmountKeypad
+                onDigit={onKeypadDigit}
+                onDelete={onKeypadDelete}
+                onDone={keypad.done}
+                onSwipeDown={onCollapse}
+              />
+            </div>
+          </motion.div>
+
           {/* Swipe to confirm — shared component (remounts on collapse via key
-              so its swipe/loader state resets). */}
+              so its swipe/loader state resets). Stays pinned at the card bottom;
+              the keypad slot above pushes the rest up. */}
           <div className="flex w-full flex-col px-[10px] pb-[10px] pt-2">
             <SwipeToConfirm
               key={expanded ? 'expanded' : 'collapsed'}
               stake={keypad.displayValue}
               onConfirm={onConfirm}
               onSwipeStart={onKeepAlive}
-            />
-          </div>
-        </motion.div>
-
-        {/* NUMERIC KEYPAD — a docked layer at the card's bottom edge. Its slot
-            height (`keypadOffsetH`) is added to the shell/glass height above, so
-            opening it GROWS the slip deterministically (no ResizeObserver
-            dependency). The AmountKeypad is bottom-anchored inside the growing,
-            clipped slot, so it's revealed as the slot springs open. */}
-        <motion.div
-          className="absolute inset-x-4 bottom-2 overflow-hidden"
-          style={{
-            height: keypadOffsetH,
-            opacity: keypadOpacity,
-            pointerEvents: keypad.open ? 'auto' : 'none',
-          }}
-          aria-hidden={!keypad.open}
-        >
-          <div className="absolute inset-x-0 bottom-0 border-t border-[rgba(251,251,251,0.12)]">
-            <AmountKeypad
-              onDigit={onKeypadDigit}
-              onDelete={onKeypadDelete}
-              onDone={keypad.done}
-              onSwipeDown={onCollapse}
             />
           </div>
         </motion.div>

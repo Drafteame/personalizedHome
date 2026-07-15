@@ -117,6 +117,7 @@ function SelectionRow({
   showOdds,
   indent,
   padded,
+  compact,
   xColor = X_DEFAULT,
   stop,
 }: {
@@ -129,14 +130,17 @@ function SelectionRow({
   indent: boolean;
   /** Extra vertical padding — standalone rows breathe; SGP members stay tight. */
   padded?: boolean;
+  /** Hug content: smaller shield + × and no min-height/padding, so a dateless
+      row shrinks to its two text lines (summarized slip). */
+  compact?: boolean;
   /** × tint (SGP members match the market color; standalone rows default). */
   xColor?: string;
   stop?: boolean;
 }) {
   return (
     <div
-      className={`flex min-h-11 w-full items-center ${indent ? 'pl-3' : ''} ${
-        padded ? 'py-1' : ''
+      className={`flex w-full items-center ${indent ? 'pl-3' : ''} ${
+        compact ? 'py-1' : padded ? 'min-h-11 py-1' : 'min-h-11'
       }`}
     >
       {onRemove && (
@@ -145,6 +149,7 @@ function SelectionRow({
           stop={stop}
           label="Quitar selección"
           color={xColor}
+          compact={compact}
         />
       )}
       <div
@@ -349,7 +354,8 @@ export function SelectionGroups({
                 showDate={showStandaloneDate}
                 showOdds
                 indent={false}
-                padded
+                padded={showStandaloneDate}
+                compact={!showStandaloneDate}
                 xColor={X_WHITE}
                 stop={stopSwipePropagation}
               />
