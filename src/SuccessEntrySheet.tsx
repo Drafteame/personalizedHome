@@ -419,6 +419,11 @@ export function SuccessEntrySheet({
             style={{
               clipPath,
               borderColor,
+              // The card opts back into hit testing inside pointer-free
+              // positioning wrappers. Disable that override immediately on
+              // exit so the invisible/shrinking confirmation card cannot
+              // intercept taps intended for the bet-slip pill underneath.
+              pointerEvents: isPresent ? 'auto' : 'none',
               // `none` so the browser doesn't scroll-steal the swipe-down — the
               // raw pointer handlers (useVerticalSwipe) drive the close. Buttons
               // and the scrollable selections list are excluded from the swipe

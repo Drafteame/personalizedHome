@@ -66,17 +66,16 @@ const START_H = 56;
 // by this much so it lands ON the pill (not the navbar). Ramps in only over the
 // small end of the morph so the full card stays put at the navbar line.
 const PILL_RISE_PX = 62;
-// Top inset of the floating card's max height — the app header (sticky topbar:
-// the logo/balance bar, ~44px now that the simulated status bar is gone) must
-// stay visible, so the card can never grow past this line (~8px below the
-// header). Only bounds the MAX height; small slips stay bottom-anchored.
-const TOP_INSET_PX = 52;
+// Top inset of the floating card's max height. The app adds its desktop/mockup
+// status-bar clearance at the 431px breakpoint, so reserve the full header band
+// here: the card must never cover the logo/balance row at either mobile width.
+// Only bounds the MAX height; small slips stay bottom-anchored.
+const TOP_INSET_PX = 96;
 // Bottom gap so the card's lower edge lines up with the navbar (which sits
 // pb-4 = 16px above the safe-area inset).
 const BOTTOM_GAP_PX = 16;
-// Overlay stays transparent across this top band (the ~44px app header) so the
-// header is never dimmed, then ramps to full scrim just below it.
-const HEADER_UNDIM_PX = 44;
+// Keep that same full header band undimmed, then ramp to the scrim below it.
+const HEADER_UNDIM_PX = 88;
 
 // Full-card fill/border (dark). As the card shrinks toward the pill it
 // cross-fades to the PILL look below so the capsule reads as the SAME purple
@@ -320,6 +319,11 @@ export function BetSlipFullSheet({
         style={{
           clipPath,
           borderColor,
+          // The positioning wrappers intentionally use pointer-events:none and
+          // this card opts back in while open. Opt out again as soon as exit
+          // starts; otherwise this explicit `pointer-events:auto` overrides the
+          // closing overlay root and the invisible card intercepts pill taps.
+          pointerEvents: isPresent ? 'auto' : 'none',
           // `none` so the browser doesn't scroll-steal the swipe-down — the raw
           // pointer handlers (useVerticalSwipe) drive the close. The scroll
           // list, swipe thumb, and buttons are excluded from the swipe; the
@@ -351,12 +355,13 @@ export function BetSlipFullSheet({
       >
         {/* HANDLE — same grabber as the summarized slip; signals swipe-down to
             close. Part of the drag-to-close chrome (not a button/scroll area). */}
-        <div className="flex shrink-0 items-center justify-center px-3 pt-3 pb-2">
+        <div className="flex shrink-0 items-center justify-center px-3 pb-1 pt-2">
           <div className="h-1 w-8 rounded-full bg-[rgba(251,251,251,0.32)]" />
         </div>
 
-        {/* HEADER — (delete-all trash omitted) · title + count · × */}
-        <div className="relative flex h-14 shrink-0 items-center border-b border-[rgba(240,242,244,0.08)]">
+        {/* HEADER — delete all · title + count · close. The 44px row keeps the
+            chrome compact while preserving the 40px action touch targets. */}
+        <div className="relative flex h-11 shrink-0 items-center border-b border-[rgba(240,242,244,0.08)]">
           {/* Delete-all (trash). */}
           <div className="flex w-12 shrink-0 pl-1">
             <button
@@ -369,7 +374,7 @@ export function BetSlipFullSheet({
               <img src={trashIcon} alt="" className="size-5" />
             </button>
           </div>
-          <div className="flex min-w-px flex-1 flex-col items-center justify-center px-3">
+          <div className="flex min-w-px flex-1 items-center justify-center px-3">
             <div className="flex items-center justify-center gap-1">
               <p className="text-[14px] font-bold leading-[21px] text-[#f0f2f4]">
                 Resumen de tu entrada
@@ -380,9 +385,6 @@ export function BetSlipFullSheet({
                 </span>
               </div>
             </div>
-            <p className="w-full text-center text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)]">
-              Balance disponible: $250.00
-            </p>
           </div>
           <div className="flex w-12 shrink-0 justify-end pr-1">
             <button
