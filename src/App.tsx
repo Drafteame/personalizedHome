@@ -147,10 +147,11 @@ export function App() {
   const [lightning, setLightning] = useState(false);
   const [entryCount, setEntryCount] = useState(0);
   const [entryBump, setEntryBump] = useState(0); // Mis entradas icon "catch" bump
-  // When the success card is closed via "Reusar", the selections are kept so
-  // the slip rebuilds AFTER the flying-ticket microinteraction; every other
-  // close path clears them. Read by finishEntryCreated (the ticket's onDone).
-  const keepSelectionsRef = useRef(false);
+  // Whether ticket completion must preserve the CURRENT selections. Reusar
+  // keeps the placed slip; Entrada nueva clears it immediately, then also sets
+  // this flag so picks made while the decorative ticket is flying are not
+  // erased when its delayed onDone callback arrives. Lightning leaves it false.
+  const preserveSelectionsOnFinishRef = useRef(false);
   // Navbar compresses to an icon-only row while scrolling DOWN through the
   // offer, and springs back to full size on any scroll UP (or near the top).
   // The same signal collapses the leagues row (in HomeScreenChrome).
@@ -221,7 +222,6 @@ export function App() {
     setSelections((current) => {
       const existing = current.find((s) => s.id.startsWith(id));
       if (existing) return current.filter((s) => s !== existing);
-      if (current.length >= buttonProgressionConfig.maxSelections) return current;
       const pick = MOCK_PICKS.find((p) => p.id === id);
       if (!pick) return current;
       return [...current, { ...pick, id: `${pick.id}-${current.length}` }];
@@ -261,7 +261,14 @@ export function App() {
   // card and play the flying-ticket microinteraction. The entry is recorded (+
   // the count badge pops) only once the ticket lands, in finishEntryCreated.
   const successNewEntry = useCallback(() => {
-    keepSelectionsRef.current = false; // fresh slip after the ticket
+    preserveSelectionsOnFinishRef.current = true;
+    // Release the offer immediately. Previously the placed selections stayed
+    // in state until EntryCreatedOverlay's flight animation called onDone().
+    // That made the retained slip look stale even though the success card was
+    // already gone. The ticket is purely decorative and pointer-free, so
+    // interaction state must not depend on it.
+    setSelections([]);
+    setStake(DEFAULT_STAKE);
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
@@ -270,7 +277,7 @@ export function App() {
   // Reusar → same flying-ticket close, but KEEP the selections so a fresh slip
   // rebuilds once the ticket lands (finishEntryCreated skips the clear).
   const successReuse = useCallback(() => {
-    keepSelectionsRef.current = true;
+    preserveSelectionsOnFinishRef.current = true;
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
@@ -287,6 +294,7 @@ export function App() {
     playSelectionHaptic();
     setListOpen(false);
     setExpanded(false);
+    preserveSelectionsOnFinishRef.current = false;
     setLightning(true);
     setSelections([{ ...pick, id: `${pick.id}-0` }]); // button → selected
     // Hold the selected state briefly, then create the entry.
@@ -300,12 +308,14 @@ export function App() {
   const finishEntryCreated = useCallback(() => {
     setSuccess(false);
     setLightning(false);
-    // Reusar keeps the selections so the slip rebuilds; all other paths clear.
-    if (!keepSelectionsRef.current) {
+    // Reusar preserves the placed slip. Entrada nueva already cleared the
+    // placed slip synchronously and preserves any picks made during the ticket.
+    // Lightning is the only path that still needs completion-time cleanup.
+    if (!preserveSelectionsOnFinishRef.current) {
       setSelections([]);
       setStake(DEFAULT_STAKE); // fresh slip → default amount
     }
-    keepSelectionsRef.current = false;
+    preserveSelectionsOnFinishRef.current = false;
     setExpanded(false);
     setEntryCount((c) => c + 1);
   }, []);
@@ -757,7 +767,7 @@ export function App() {
                   Odds {cumulativeOdds.toFixed(2)}x
                 </div>
                 <div className="text-[10px] font-medium text-white/70">
-                  {selections.length} / {buttonProgressionConfig.maxSelections} picks
+                  {selections.length} picks
                 </div>
                 {/* Live phase readouts — driven by ButtonPreviewMomios useMotionValueEvent */}
                 <div className="mt-1 flex items-center justify-between border-t border-amber-400/20 pt-1">

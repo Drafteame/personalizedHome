@@ -336,7 +336,6 @@ groups:
 | Group                  | Controls                                                  |
 | ---------------------- | --------------------------------------------------------- |
 | `tiers`                | Tier thresholds (odds cutoffs)                            |
-| `maxSelections`        | Slip cap                                                  |
 | `pressScale`           | All-tier tap feedback                                     |
 | `slotDurationMs`       | Per-digit slot roll                                       |
 | `anticipationScale/Ms` | Pre-slot 40 ms compress                                   |

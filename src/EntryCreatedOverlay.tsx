@@ -41,6 +41,10 @@ const cfg = {
   // user just closed already delivered the "entry created" message) rather
   // than a primary status screen — a quick glance, then it flies to the tab.
   confirmedHoldMs: 600,
+  // Absolute lifecycle guard. Spring completion can be delayed indefinitely
+  // when a browser backgrounds/throttles the page; the decorative ticket must
+  // never keep the success state alive (and the offer suppressed) forever.
+  lifecycleMaxMs: 3000,
   // Ticket geometry (Figma 33822:171080). The shape itself (rounded corners +
   // mid-edge notches) is the exact Figma vector `TICKET_FILL_PATH`, authored in
   // a 16..249 / 16..124 space, so the SVG uses viewBox `TICKET_VIEWBOX`.
@@ -377,6 +381,7 @@ export function EntryCreatedOverlay({
   onCovered?: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const doneRef = useRef(false);
   const [flight, setFlight] = useState<{ from: Rect; to: Rect } | null>(null);
   // Celebration sparks — generated once, when the circular reveal completes.
   const [burst, setBurst] = useState<BurstSpark[] | null>(null);
@@ -389,6 +394,12 @@ export function EntryCreatedOverlay({
   // Stroke + glow live on the wrapper as a drop-shadow filter (so they follow
   // the notched shape and aren't clipped by the SVG viewport).
   const ticketFilterMV = useTransform(glow, (g) => ticketGlow(g));
+
+  const finishOnce = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    onDone();
+  };
 
   const handleRevealEnd = () => {
     onCovered?.();
@@ -416,10 +427,21 @@ export function EntryCreatedOverlay({
       if (from && tab) {
         setFlight({ from, to: tab });
       } else {
-        onDone();
+        finishOnce();
       }
     }, cfg.confirmedHoldMs);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Covers the entire reveal → hold → flight sequence. This is deliberately
+  // independent of Framer's spring promises and DOM measurement so browser
+  // throttling, a missing tab target, or an interrupted animation can never
+  // strand the success flow. `finishOnce` also makes the normal and fallback
+  // completion paths safe to race.
+  useEffect(() => {
+    const t = window.setTimeout(finishOnce, cfg.lifecycleMaxMs);
+    return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -515,7 +537,7 @@ export function EntryCreatedOverlay({
           from={flight.from}
           to={flight.to}
           onCatch={onCatch}
-          onDone={onDone}
+          onDone={finishOnce}
         />
       )}
     </div>

@@ -37,8 +37,6 @@ export const buttonProgressionConfig = {
   // ButtonPreviewMomios + App, so it reuses the existing reduced-motion
   // gating paths rather than threading a new flag through every effect.
   animationsEnabled: false as boolean,
-  // Cap selections at this count to prevent runaway tiers.
-  maxSelections: 8,
   // Press feedback — scale on press, spring back on release (all tiers).
   pressScale: 0.97,
   // Slot animation duration for per-digit roll (selection count + odds).

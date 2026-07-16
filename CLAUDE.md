@@ -41,7 +41,7 @@ Tiers are **additive** — T3 includes everything in T2, etc. Differentiate with
 |---|---|
 | `src/BetSlipSheet.tsx` | **The bet slip on `main`.** ONE persistent glass surface that morphs its *shape* (height + corner radius, bottom-anchored) between the collapsed `ButtonPreviewMomios` capsule and the expanded purple-glass **summarized** card — a liquid morph, never an empty frame. The summarized card shows **1–2 selections only**, rendered via the shared **`SelectionGroups`** (SGP grouping: 2 same-match picks → one SGP block with a match header; different matches → standalone rows with a divider between; see the SGP landmark). **No 2+ "Bets · Promos · Lista" header** — the slip keeps the single handle structure. Adding a **3rd** selection auto-collapses to the pill (`App.tsx`: `setExpanded(count <= 2)` on growth). **With 3+ selections the summarized slip never re-opens** — `App.tsx` routes `onExpand` (tap the pill / swipe up) to open the "Resumen" floating card (`BetSlipFullSheet`) instead of expanding. Expanded height is **measured** from the content (`expandedH` motion value via ResizeObserver), so the card springs taller/shorter as the 2nd row is added/removed. Driven by a single `collapseP` motion value; the collapse is gesture-driven (drag shrinks it with the finger). Owns gesture-collapse, swipe-**up**-to-open-full-card, tap-to-expand (or tap-to-open-card at 3+), swipe-to-confirm (shared `SwipeToConfirm`), appear/collapse squash-stretch pulses. |
 | `src/BetSlipFullSheet.tsx` | "Resumen de tu entrada" **floating card** (Figma `newEntryCards` 33822:171090), opened by tapping the collapsed pill (or swiping the slip up) when there are **3+ selections**. NOT a full-screen sheet: a bottom-anchored floating card (all corners `rounded-[28px]`, side inset `left/right-4`, **drag handle** at top matching the slip) over a gradient scrim (transparent across the top `HEADER_UNDIM_PX` 88px band so the app header stays undimmed, then `black/0.7` below). **Content-adaptive height** — grows/shrinks with the selection count (list is content-exact, no trailing fade); **capped** so its top stops at `TOP_INSET_PX` (96px, below the ~88px sticky header, which stays visible), after which the selections list scrolls internally (scrollbar hidden via `no-scrollbar`). Bottom edge lines up with the navbar (`BOTTOM_GAP_PX` = 16px + safe-area). The **inner content is unchanged** from the prior sheet (header trash clears the slip, selections list, Monto/Momio/Ganancia, free-bet/Booster promos box `freebet.png`/`booster.png`, accept-odds checkbox) except the swipe-to-play is the shared `SwipeToConfirm` at `heightPx={44}`. **Opens as a shape-morph, not a slide** — the card GROWS out of the slip footprint via a bottom-up `clip-path` reveal (from a `START_H` 56px capsule = the collapsed-pill height, up to the measured full height) while its content + the backdrop crossfade in, driven by one `openP` motion value — mirroring the pill↔card morph in `BetSlipSheet` so summarized slip → pill → this card all read as ONE surface changing shape. **Closes the same way, reversed** — × / backdrop-tap spring `openP` back to 0 (the card shrinks *in place* back into the pill, never a bottom-sheet slide) and **swipe-down drives the shrink directly** (the gesture writes `openP` from the finger offset 1:1, exactly like `BetSlipSheet`'s gesture-collapse — the card does NOT translate `y`). Both open and close use the same `OPEN_SPRING`. During the morph the card's **fill + border cross-fade to the purple pill** (a `PILL_BG`/`#4b20ff` layer under the dark `SHEET_BG`, driven by `cardDarkOpacity`) AND the card **rises `PILL_RISE_PX` (62px) up to the pill's line** (a `morphY` translate on a wrapper) — so the shrunk capsule lands ON the purple pill, not the dark navbar. During close the whole card **cross-fades against the real pill behind it** (`cardOpacity`, `openP` [0,0.12]) so the pill's content is revealed as the capsule fades — no "empty pill" gap — and a **close squash-&-stretch** pulse (`scaleX`/`scaleY`, same as the summarized slip's collapse) plays as it shrinks in. Close also collapses the bet slip; swipe-to-confirm → `confirmBet` closes the card + plays the success animation. Toggles + checkbox are CSS controls. One asset still pending: the countdown **clock icon**. |
-| `src/EntryCreatedOverlay.tsx` | **Success animation** — ONE ticket/stub shape (Figma 33822:171080, **233×108**, notched mid-edges, drawn as the exact Figma vector `TICKET_FILL_PATH` in viewBox `16 16 233 108`; radial-green fill + gradient rim + wrapper `drop-shadow` glow), played as a **brief microinteraction**. Fires **after the floating success card (`SuccessEntrySheet`) is closed** (both close paths — `successNewEntry` / `successReuse` in `App.tsx` set `success`), and for the **lightning bet** (which skips the card). Shows the `success-check.png` icon + uppercase italic "¡ENTRADA CREADA!"; enters via a **circular clip-path reveal** (`greenCircleIn`, 0.16s) + content pop, fires a **green spark burst + squash/stretch pop + glow flash** on reveal-complete (`onCovered`), holds only `cfg.confirmedHoldMs` (**600ms**), then a fast **genie flight** into "Mis entradas" (springs launched together, no anticipation; progress-driven squash/stretch, shrink envelope, rotation; **fades out just before the tab** so it never overlaps). `onCatch` bumps the tab icon; `onDone` (`finishEntryCreated`) records the entry + pops the count badge — **no "¿Reusar?" prompt** (reuse/share live in the success card). All timing/geometry in its `cfg`. |
+| `src/EntryCreatedOverlay.tsx` | **Success animation** — ONE ticket/stub shape (Figma 33822:171080, **233×108**, notched mid-edges, drawn as the exact Figma vector `TICKET_FILL_PATH` in viewBox `16 16 233 108`; radial-green fill + gradient rim + wrapper `drop-shadow` glow), played as a **brief microinteraction**. Fires **after the floating success card (`SuccessEntrySheet`) is closed** (both close paths — `successNewEntry` / `successReuse` in `App.tsx` set `success`), and for the **lightning bet** (which skips the card). Shows the `success-check.png` icon + uppercase italic "¡ENTRADA CREADA!"; enters via a **circular clip-path reveal** (`greenCircleIn`, 0.16s) + content pop, fires a **green spark burst + squash/stretch pop + glow flash** on reveal-complete (`onCovered`), holds only `cfg.confirmedHoldMs` (**600ms**), then a fast **genie flight** into "Mis entradas" (springs launched together, no anticipation; progress-driven squash/stretch, shrink envelope, rotation; **fades out just before the tab** so it never overlaps). `onCatch` bumps the tab icon; `onDone` (`finishEntryCreated`) records the entry + pops the count badge — **no "¿Reusar?" prompt** (reuse/share live in the success card). Completion is idempotent and guarded by `cfg.lifecycleMaxMs` so browser animation throttling cannot strand the success state. The "Entrada nueva" close path clears selections/stake immediately before this decorative animation, keeping the offer interactive independently of animation completion. All timing/geometry in its `cfg`. |
 | `src/ButtonPreviewMomios.tsx` | The collapsed bet-slip pill (~1.7k LOC, all tier-gated effects; effects OFF on `main` via the master switch → static pill). Rendered by `BetSlipSheet` as the collapsed state. Full animated version preserved on the `bet-slip-progression` branch. |
 | `src/buttonProgressionConfig.ts` | **Central tunables.** Every magic number lives here with a comment. |
 | `src/types.ts` | `Tier = 0 | 1 | 2 | 3 | 4`, `Selection`, `TierConfig`. |
@@ -110,6 +110,86 @@ Wiring (intentionally minimal — reuses the reduced-motion gates): `ButtonPrevi
 - **Save checkpoints with git tags** before risky changes (e.g., `pre-stroke-thin-t3`, `pre-attracted-sparks`). User explicitly says "save this version" when they want one.
 - **Never reinterpret, invent, or recreate icons / SVGs / PNGs / images.** Wait for the user to upload the asset file and tell you which to use. If a component needs visual assets that aren't yet provided, ASK — don't substitute placeholder shapes, emojis, or paths drawn from imagination. The current uploaded asset set lives in `src/assets/`.
 
+## Implementation and Local Preview Verification
+
+The following process is mandatory for every implementation, bug fix, and UI adjustment.
+
+### 1. Verify the correct environment
+
+- Confirm the active repository, working directory, branch, and relevant files before making changes.
+- Confirm that the localhost preview is running from the same repository and branch being edited.
+- Check whether the preview is using stale code, cached assets, or an outdated build.
+
+### 2. Reproduce before modifying
+
+- Reproduce the reported issue in the actual localhost preview before implementing a fix.
+- Document the exact route, state, viewport, interactions, and data needed to reproduce it.
+- Do not assume the issue based only on reading the code.
+
+### 3. Implement the root-cause fix
+
+- Identify and fix the underlying cause rather than applying a visual patch or temporary workaround.
+- Check related component states, overlays, pointer events, scroll locks, z-index layers, timers, event listeners, cached state, and responsive variants when relevant.
+- Reuse existing components and patterns when appropriate, but do not force reuse if it creates incorrect behavior.
+
+### 4. Verify in the running preview
+
+- Do not mark a task as complete based only on code changes, compilation, tests, or static inspection.
+- Test the final behavior directly in the localhost browser preview.
+- Restart the development server, rebuild the project, or clear relevant caches when changes are not reflected.
+- If the requested change is not visible or the issue remains reproducible, continue debugging.
+
+### 5. Test the requested case and nearby edge cases
+
+- Validate the exact scenario reported by the user.
+- Test adjacent states, thresholds, responsive layouts, and interaction paths likely to be affected.
+- For UI changes, verify both desktop and mobile browser behavior when those views exist.
+- Confirm that the change does not introduce regressions in related flows.
+
+### 6. Do not claim unverified completion
+
+- Never state that a task is completed, fixed, or implemented unless it has been verified in the actual local preview.
+- If direct preview verification is not possible, clearly state that limitation and describe exactly what remains unverified.
+- Never invent test results or imply that browser validation occurred when it did not.
+
+### 7. Provide a completion report
+
+After every task, report:
+
+- Root cause or implementation rationale.
+- Exact files changed.
+- Summary of the changes.
+- Localhost route and viewport tested.
+- Reproduction and verification steps performed.
+- Edge cases tested.
+- Whether the dev server, build, or cache had to be restarted.
+- Any remaining limitations or unverified behavior.
+
+### 8. Preserve working changes
+
+- Do not revert or overwrite unrelated user changes.
+- Review the current diff before and after implementation.
+- Keep the scope limited to the requested task unless a broader change is necessary to fix the root cause.
+- Explicitly mention any additional changes that were required.
+
+### 9. Use evidence
+
+- When possible, include concrete evidence from the verification process, such as observed UI behavior, console output, test results, or screenshots.
+- Completion claims must be supported by the performed checks.
+
+### Definition of Done
+
+- [ ] Correct repository and branch confirmed
+- [ ] Issue or requested behavior reproduced
+- [ ] Root cause or implementation path identified
+- [ ] Change implemented
+- [ ] Local preview refreshed or restarted
+- [ ] Exact requested behavior verified in the browser
+- [ ] Relevant edge cases tested
+- [ ] No blocking overlay, stale state, console error, or regression found
+- [ ] Diff reviewed
+- [ ] Completion report provided
+
 ## Common gotchas
 
 - **`tier === N` vs `tier >= N`** — new tiers don't inherit T3-only effects unless you change `===` to `>=`. Audit every gate when adding a tier (OddsRipple, fire sparks, outline ripple, tremor, glow loop, etc.).
@@ -142,7 +222,8 @@ Key design principle to preserve: **no base color shifts across tiers** — esca
 
 ## Recent landmarks (rolling — keep current)
 
-- **Flying ticket now plays AFTER the success card closes (brief microinteraction)** — the green "¡ENTRADA CREADA!" ticket (`EntryCreatedOverlay`) used to be lightning-only; the swipe-confirm / Resumen flows just showed the floating success card (`SuccessEntrySheet`) and bumped the count on close. Now **closing that card triggers the flying ticket**: `successNewEntry` / `successReuse` (`App.tsx`) set `success` instead of incrementing the count directly, and the ticket's `onDone` (`finishEntryCreated`) records the entry + pops the tab count badge once it lands. `keepSelectionsRef` distinguishes the two close paths — "Reusar" keeps the selections (slip rebuilds after the ticket), every other path clears them. The animation is **faster + briefer** (`cfg.confirmedHoldMs` 1700→**600ms**, entrance reveal 0.2→0.16s, burst 300–500ms, snappier genie springs). The **post-entry "¿Reusar o compartir?" action row (reuse/share/discard buttons) is REMOVED entirely** — those actions live inside the success card now, so the ticket flow shows ONLY the ticket + the count badge; `promptOpen`/`promptMounted` state, the JSX block, the `close/compartir/reusar` icon imports, and the `promptIn` keyframe are all deleted.
+- **Removed the silent 8-selection interaction cap** — `togglePick` no longer drops new market taps when a reused slip already contains 8 selections, and `buttonProgressionConfig.maxSelections` is gone. The debug counter now reports the live count without a misleading `/ 8`. This fixes the post-success "frozen offer" path: after closing the success card with **Reusar**, the clean DOM was interactive but the old max guard silently rejected every additional market. Entries with 9, 10, and more selections now continue normally; "Entrada nueva" still clears the placed slip immediately.
+- **Flying ticket now plays AFTER the success card closes (brief microinteraction)** — the green "¡ENTRADA CREADA!" ticket (`EntryCreatedOverlay`) used to be lightning-only; the swipe-confirm / Resumen flows just showed the floating success card (`SuccessEntrySheet`) and bumped the count on close. Now **closing that card triggers the flying ticket**: `successNewEntry` / `successReuse` (`App.tsx`) set `success` instead of incrementing the count directly, and the ticket's `onDone` (`finishEntryCreated`) records the entry + pops the tab count badge once it lands. `preserveSelectionsOnFinishRef` protects both the intentionally reused slip and any fresh picks made after "Entrada nueva" clears the placed slip synchronously; only lightning still clears at ticket completion. The animation is **faster + briefer** (`cfg.confirmedHoldMs` 1700→**600ms**, entrance reveal 0.2→0.16s, burst 300–500ms, snappier genie springs). The **post-entry "¿Reusar o compartir?" action row (reuse/share/discard buttons) is REMOVED entirely** — those actions live inside the success card now, so the ticket flow shows ONLY the ticket + the count badge; `promptOpen`/`promptMounted` state, the JSX block, the `close/compartir/reusar` icon imports, and the `promptIn` keyframe are all deleted.
 - **Experimental booster in the summarized slip** (`SummarizedBooster.tsx`, Figma "booster" 34464:67859) — a standalone orange-bordered booster row added to the SUMMARIZED slip (`BetSlipSheet`) only, sitting **directly below the Monto stake** (keypad closed) or **directly below the numeric keypad** (keypad open), since it's an in-flow child placed AFTER the bottom-anchored keypad slot and BEFORE the swipe. Its own `pt-[10px]` is the 10px gap above; the swipe's `pt-[10px]` is the gap below — so the 10px rhythm around the keypad is preserved. Rendered ALWAYS-DISABLED (the booster only unlocks at 3+ selections but the summarized slip only shows 1–2, so it's a visible incentive; non-interactive, no benefit — matches the Figma "Default-disabled" switch). **Easily enable/disable** via `SUMMARIZED_BOOSTER_ENABLED` (returns `null` when false) or by deleting the one call site — zero effect on the rest of the slip. **Does NOT touch the floating card** (`BetSlipFullSheet` keeps its own promos-box booster). Checkpoint before this work: tag **`pre-summarized-booster`** + branch **`feature/summarized-booster`**.
 - **Multi-match offer on the feed** — the offer now spans 4 matches (`MATCHES`: PSG·RMA, ARS·RMA, FCB·PSG, LIV·MCI) so SGP grouping and cross-match singles can be built + verified by tapping the real offer (not just the debug seed). The promo card section (`PromoCarousel`) is now a horizontal **scroll-snap carousel** of per-match money-line cards (`MatchCard`; a dot per match, the next card peeks; money-line label is by column position — 0=home, draw=EMPATE, else away — since pick names are full team names). Added a **second player market "Tiros al arco"** (`SHOTS_MARKET`) with the SAME layout as "Anota gol en cualquier momento" (`GOALS_MARKET`) — `MarketAccordion` is now parametrized by `title` and filters `MOCK_PICKS` by `market === title`, rendering player cards across every match (player name = `pick.pick`, position from `PLAYER_POSITION` default DEL, match/time from the Selection via `splitKickoff`). The old hardcoded `PLAYER_META` is gone. `MOCK_PICKS` expanded to full money lines + goal/shots players per match.
 - **Same-game-parlay (SGP) grouping** — 2+ selections that share a `matchId` now collapse into one **SGP block** in the bet slip: a match-info header (`HOME vs AWAY · kickoff` + a group `×` that removes the whole match, Figma "SGP" 34367:176772) followed by its member rows, indented under the header. Lone-match picks stay standalone rows; every unit is separated from the next by a divider (SGP↔SGP, SGP↔single, single↔single). **SGP member rows hide their leg odds** (they roll up into the SGP's combined odds, per Figma); standalone legs in a MULTI-selection slip keep their own odds. SGP rows are compact (44px members, 40px header); standalone rows are lightly `padded` (py-1). **Dividers between units are conditional** (`dividers` prop): the summarized slip passes `'none'` (never), and the floating card + success view default to `'auto'` — dividers show ONLY when the slip contains at least one SGP group (a pure list of single-match bets shows none), with `my-2` spacing. The × is a tintable CSS-mask glyph (`CloseGlyph`): **group header × = white**, **SGP member × = the market-name color** (`rgba(251,251,251,0.5)`), standalone/straight-bet × = white. The summarized slip passes `showStandaloneDate={false}` so its 2-selection (two different-match singles) view drops the kickoff line AND those rows go `compact` (full 44px shield, no min-height, `py-1` gap → ~49px each, vs the dated ~56px); the floating card + success view keep the roomier dated standalone rows. **A slip with exactly ONE selection** is a **straight bet** → the ORIGINAL single-selection row (`StraightBetRow`): **date on the right, NO odds** (the odds already show in the Momio field next to the amount), market medium + pick bold. Implemented ONCE in the shared **`SelectionGroups`** component (grouping logic in **`betSlipGrouping.ts`**) and used by all three views — summarized slip (`BetSlipSheet`), floating card (`BetSlipFullSheet`), success confirmation (`SuccessEntrySheet`, read-only: no × chrome). The old per-view inline selection rows are gone. `Selection` gained `matchId` + `homeAbbrev`/`awayAbbrev`/`matchTime`; `MOCK_PICKS` carries match info and adds off-feed picks (ARS·RMA / FCB·PSG / LIV·MCI) so a cross-match slip can be built. `App.tsx` gained `removeGroup(matchId)` (wired to both slips) and a debug **🎯 Cargar mezcla SGP** seed (2 SGP blocks + 2 standalone picks). All existing morph/pulse/swipe/open-close animations untouched.
