@@ -132,7 +132,7 @@ function MorePromosTile() {
       className="flex h-[54px] w-[75px] shrink-0 snap-start flex-col items-center justify-center rounded-[20px] border border-[rgba(251,251,251,0.16)] bg-[rgba(251,251,251,0.04)] active:opacity-70"
       aria-label="Ver más promociones"
     >
-      <img src={chevronIcon} alt="" className="size-5" />
+      <img src={chevronIcon} alt="" className="size-5 -rotate-90" />
       <span className="whitespace-nowrap text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
         Ver más
       </span>
