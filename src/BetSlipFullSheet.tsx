@@ -6,11 +6,12 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { useStakeKeypad } from './useStakeKeypad';
 import { useVerticalSwipe } from './useVerticalSwipe';
-import boosterIllus from './assets/booster.png';
+import { BoosterPromoTile, PromoSwitch } from './SummarizedBooster';
+import chevronIcon from './assets/chevron.svg';
 import chevronRightIcon from './assets/chevron_right.svg';
 import clockIcon from './assets/clock.svg';
 import closeIcon from './assets/close.svg';
@@ -33,8 +34,8 @@ import type { Selection } from './types';
  * collapses the underlying bet slip (onClose).
  *
  * Includes: header (delete-all trash + × + count + balance), scrollable
- * selections list, Monto/Momio/Ganancia footer, the free-bet/Booster promos
- * box, the "accept odds changes" checkbox, and swipe-to-play. Toggle switches
+ * selections list, Monto/Momio/Ganancia footer, the horizontal promos
+ * carousel, the "accept odds changes" checkbox, and swipe-to-play. Toggle switches
  * and the checkbox are CSS controls. STILL PENDING one asset: the countdown
  * clock icon — the countdown pills currently show the time text without it.
  *
@@ -76,6 +77,94 @@ const TOP_INSET_PX = 96;
 const BOTTOM_GAP_PX = 16;
 // Keep that same full header band undimmed, then ramp to the scrim below it.
 const HEADER_UNDIM_PX = 88;
+
+function FreeBetPromoTile({
+  active,
+  toggleEnabled,
+  onToggle,
+}: {
+  active: boolean;
+  toggleEnabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="freebet-gradient-border flex h-[54px] w-[264px] shrink-0 snap-start items-center gap-2 rounded-[20px] py-[6px] pl-2 pr-[10px]">
+      <div
+        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[12px] p-0.5"
+        style={{
+          backgroundImage:
+            'linear-gradient(140.5deg, #f0abfc 0%, #6b47ff 100%)',
+        }}
+      >
+        <img src={freebetIllus} alt="" className="size-7 object-contain" />
+      </div>
+      <div className="flex min-w-px flex-1 flex-col items-start">
+        <span className="whitespace-nowrap text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
+          Apuesta gratis
+        </span>
+        <div className="flex h-[18px] items-center gap-2">
+          <div className="flex h-[18px] items-center gap-1 rounded-[12px] bg-[rgba(251,251,251,0.16)] pl-0.5 pr-1">
+            <img src={clockIcon} alt="" className="size-3" />
+            <span className="whitespace-nowrap text-[12px] font-bold leading-[18px] text-[#fbfbfb]">
+              29d<span className="text-[#e2e2e2]">:</span>23h
+            </span>
+          </div>
+          <div className="h-4 w-px bg-[rgba(251,251,251,0.16)]" />
+          <span className="whitespace-nowrap text-[14px] font-bold leading-[21px] text-[rgba(251,251,251,0.7)]">
+            $25
+          </span>
+        </div>
+      </div>
+      <PromoSwitch
+        active={active}
+        enabled={toggleEnabled}
+        label="Activar apuesta gratis"
+        onToggle={onToggle}
+      />
+    </div>
+  );
+}
+
+function MorePromosTile() {
+  return (
+    <button
+      type="button"
+      className="flex h-[54px] w-[75px] shrink-0 snap-start flex-col items-center justify-center rounded-[20px] border border-[rgba(251,251,251,0.16)] bg-[rgba(251,251,251,0.04)] active:opacity-70"
+      aria-label="Ver más promociones"
+    >
+      <img src={chevronIcon} alt="" className="size-5" />
+      <span className="whitespace-nowrap text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
+        Ver más
+      </span>
+    </button>
+  );
+}
+
+function PromoCarousel({ toggleEnabled }: { toggleEnabled: boolean }) {
+  const [freeBetActive, setFreeBetActive] = useState(false);
+  const [boosterActive, setBoosterActive] = useState(false);
+
+  return (
+    <div
+      data-scroll
+      className="no-scrollbar -mx-[10px] mt-[10px] flex snap-x snap-mandatory gap-2 overflow-x-auto px-[10px] scroll-px-[10px]"
+      style={{ touchAction: 'pan-x' }}
+    >
+      <FreeBetPromoTile
+        active={freeBetActive}
+        toggleEnabled={toggleEnabled}
+        onToggle={() => setFreeBetActive((v) => !v)}
+      />
+      <BoosterPromoTile
+        active={boosterActive}
+        className="h-[54px] w-[268px] shrink-0 snap-start"
+        toggleEnabled={toggleEnabled}
+        onToggle={() => setBoosterActive((v) => !v)}
+      />
+      <MorePromosTile />
+    </div>
+  );
+}
 
 // Full-card fill/border (dark). As the card shrinks toward the pill it
 // cross-fades to the PILL look below so the capsule reads as the SAME purple
@@ -501,86 +590,10 @@ export function BetSlipFullSheet({
             </div>
           </motion.div>
 
-          {/* Promos — free bet + Booster. Toggles are CSS controls; the
-              countdown clock glyph is still pending its asset. `mt-[10px]` is
-              the 10px gap BELOW the keypad (and the Monto→promos gap when the
-              keypad is closed). */}
-          <div className="mt-[10px] flex flex-col overflow-hidden rounded-[16px] border border-[rgba(251,251,251,0.16)]">
-            {/* Free bet (disabled toggle) */}
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div
-                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[12px] p-1"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(140.5deg, #f0abfc 0%, #6b47ff 100%)',
-                }}
-              >
-                <img src={freebetIllus} alt="" className="size-7 object-contain" />
-              </div>
-              <div className="flex min-w-px flex-1 flex-col">
-                <span className="text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
-                  Apuesta gratis
-                </span>
-                <div className="flex items-center gap-2">
-                  <div className="flex h-5 items-center gap-1 rounded-[12px] bg-[rgba(251,251,251,0.12)] px-1">
-                    <img src={clockIcon} alt="" className="size-3" />
-                    <span className="text-[12px] font-medium leading-4 text-[#fbfbfb]">
-                      29d<span className="text-[rgba(251,251,251,0.7)]">:</span>23h
-                    </span>
-                  </div>
-                  <div className="h-4 w-px bg-[rgba(251,251,251,0.16)]" />
-                  <div className="flex items-center gap-1 text-[14px]">
-                    <span className="font-medium text-[rgba(251,251,251,0.5)]">
-                      Monto:
-                    </span>
-                    <span className="font-bold text-[rgba(251,251,251,0.7)]">$25</span>
-                  </div>
-                </div>
-              </div>
-              {/* toggle — off + disabled */}
-              <div className="flex h-8 w-[52px] shrink-0 items-center rounded-full bg-[rgba(251,251,251,0.16)] px-1 opacity-40">
-                <div className="size-6 rounded-full bg-white" />
-              </div>
-            </div>
-
-            <div className="mx-3 h-px bg-[rgba(251,251,251,0.16)]" />
-
-            {/* Booster */}
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div
-                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[12px] p-1"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(50deg, #ffa65b 0%, #f0abfc 100%)',
-                }}
-              >
-                <img src={boosterIllus} alt="" className="size-7 object-contain" />
-              </div>
-              <div className="flex min-w-px flex-1 flex-col">
-                <div className="flex items-center gap-0.5">
-                  <span className="text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
-                    Booster 20%
-                  </span>
-                  <img
-                    src={chevronRightIcon}
-                    alt=""
-                    className="size-[18px] rotate-90 opacity-70"
-                  />
-                </div>
-                <div className="flex h-5 items-center gap-1 self-start rounded-[12px] bg-[rgba(251,251,251,0.12)] px-1">
-                  <img src={clockIcon} alt="" className="size-3" />
-                  <span className="text-[12px] font-medium leading-4 text-[#fbfbfb]">
-                    23h<span className="text-[rgba(251,251,251,0.7)]">:</span>23m
-                    <span className="text-[rgba(251,251,251,0.7)]">:</span>23s
-                  </span>
-                </div>
-              </div>
-              {/* toggle — off */}
-              <div className="flex h-8 w-[52px] shrink-0 items-center rounded-full bg-[rgba(251,251,251,0.16)] px-1">
-                <div className="size-6 rounded-full bg-white" />
-              </div>
-            </div>
-          </div>
+          {/* Promos — horizontal carousel from Figma nodes 34464:67899,
+              34464:67859, and 34464:67944. `gap-2` is the requested 8px
+              horizontal separation between promo components. */}
+          <PromoCarousel toggleEnabled={selections.length >= 3} />
 
           {/* Accept odds changes — CSS checkbox. `mt-3` restores the footer's
               inter-row spacing (was the removed flex `gap-3`). */}

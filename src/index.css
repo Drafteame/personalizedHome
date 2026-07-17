@@ -397,9 +397,12 @@ body {
    as the illustration chip), not a solid color. A masked ::before paints the
    gradient only in the 1px ring so the interior stays transparent (the purple
    glass shows through). Radius is inherited from the element (rounded-[20px]). */
+.freebet-gradient-border,
 .booster-gradient-border {
   position: relative;
+  background: rgba(251, 251, 251, 0.04);
 }
+.freebet-gradient-border::before,
 .booster-gradient-border::before {
   content: '';
   position: absolute;
@@ -414,4 +417,7 @@ body {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+.freebet-gradient-border::before {
+  background: linear-gradient(140.5deg, rgba(240, 171, 252, 0.7) 0%, rgba(107, 71, 255, 0.7) 100%);
 }
