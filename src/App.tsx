@@ -19,6 +19,12 @@ const LIGHTNING_SELECT_MS = 320;
 // the success sheet; the numeric keypad edits it. Reset to this on a new entry.
 const DEFAULT_STAKE = 200;
 
+// The navbar-area dark treatment is structural framing, not a bet-slip effect.
+// Keep it stable while selections, odds tiers, and slip height change.
+const NAVBAR_UPPER_FADE = 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)';
+const NAVBAR_BACKDROP =
+  'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%)';
+
 /* ============================================================ */
 /*  Debug overlay helpers                                        */
 /* ============================================================ */
@@ -593,41 +599,18 @@ export function App() {
               className="absolute inset-x-0 bottom-0 z-20"
               style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
             >
-              {/* Upper fade above the bet-slip area.
-                  T0-T3: full 0.8 → transparent to anchor the slip
-                         visually against the markets above.
-                  T4:    much softer (0.35 max) so the dark backdrop
-                         doesn't compete with the Siri vignette's
-                         colored perimeter bloom — at T4 the vignette
-                         alone provides plenty of perimeter framing,
-                         and pushing the dark backdrop to full strength
-                         creates a visible rectangular "panel" on top
-                         of the colored bloom. */}
+              {/* Upper fade above the bet-slip area. This structural framing
+                  stays identical across tiers and slip states. */}
               <div
                 className="pointer-events-none absolute inset-x-0 -top-10 h-10"
                 style={{
-                  background:
-                    tier === 4
-                      ? 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)'
-                      : 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                  background: NAVBAR_UPPER_FADE,
                 }}
               />
               <div
                 className="relative"
                 style={{
-                  // Same tier-conditional rule as the upper fade above
-                  // — the lower gradient softens at T4 so it doesn't
-                  // read as a rectangular panel against the rotating
-                  // vignette colors. Start opacity matches the upper
-                  // fade's end opacity so there's never a discontinuity
-                  // at the boundary regardless of tier.
-                  background:
-                    tier === 4
-                      ? 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.6) 100%)'
-                      : 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%)',
-                  // Smooth-fade the gradient swap during tier change so
-                  // the dark backdrop fades up/down with the vignette
-                  // rather than snapping.
+                  background: NAVBAR_BACKDROP,
                   transition: 'background 700ms ease-out',
                 }}
               >
