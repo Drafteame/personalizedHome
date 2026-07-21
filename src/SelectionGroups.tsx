@@ -37,12 +37,32 @@ type Props = {
 };
 
 const DIVIDER_COLOR = 'rgba(251,251,251,0.12)';
+const MONEY_LINE_MARKET = 'Money line';
 
 // × tint per context. The group header × is full white; the × inside an SGP
 // member row matches the market-name color; standalone rows keep the default.
 const X_WHITE = '#fbfbfb';
 const X_MARKET = 'rgba(251,251,251,0.5)'; // same as the market label
 const X_DEFAULT = 'rgba(251,251,251,0.7)';
+
+function rulesetTags(sel: Selection): string[] {
+  return sel.market === MONEY_LINE_MARKET ? ['PA', "90'"] : ["90'"];
+}
+
+function RulesetTags({ tags }: { tags: string[] }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="flex h-[15px] min-w-5 items-center justify-center rounded-md bg-[rgba(251,251,251,0.16)] px-1 text-[10px] font-bold leading-[15px] text-[rgba(251,251,251,0.7)]"
+        >
+          {tag}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 /**
  * CloseGlyph — the × icon, drawn as an INLINE svg so its color is set directly
@@ -136,6 +156,8 @@ function SelectionRow({
   xColor?: string;
   stop?: boolean;
 }) {
+  const tags = rulesetTags(sel);
+
   return (
     <div
       className={`flex w-full items-center ${indent ? 'pl-3' : ''} ${
@@ -158,9 +180,12 @@ function SelectionRow({
       >
         <Shield />
         <div className="flex min-w-px flex-1 flex-col justify-center">
-          <p className="max-w-[190px] truncate text-[10px] font-bold uppercase leading-[15px] text-[rgba(251,251,251,0.5)]">
-            {sel.market}
-          </p>
+          <div className="flex max-w-[190px] min-w-0 items-center gap-1">
+            <p className="min-w-0 truncate text-[10px] font-bold uppercase leading-[15px] text-[rgba(251,251,251,0.5)]">
+              {sel.market}
+            </p>
+            <RulesetTags tags={tags} />
+          </div>
           <p className="truncate text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
             {sel.pick}
           </p>
@@ -198,6 +223,8 @@ function StraightBetRow({
   onRemove?: (id: string) => void;
   stop?: boolean;
 }) {
+  const tags = rulesetTags(sel);
+
   return (
     <div className="flex min-h-11 w-full items-center gap-1">
       {onRemove && (
@@ -220,9 +247,12 @@ function StraightBetRow({
           />
         </div>
         <div className="flex min-w-px flex-col justify-center">
-          <p className="max-w-[162px] truncate text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]">
-            {sel.market}
-          </p>
+          <div className="flex max-w-[162px] min-w-0 items-center gap-1">
+            <p className="min-w-0 truncate text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]">
+              {sel.market}
+            </p>
+            <RulesetTags tags={tags} />
+          </div>
           <p className="truncate text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
             {sel.pick}
           </p>
