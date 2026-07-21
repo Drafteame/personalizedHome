@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import deleteIcon from './assets/delete.svg';
+import doneCheckIcon from './assets/done-check.svg';
 
 /**
  * AmountKeypad — the shared numeric keypad (Figma `keyboard` 34367:172671) used
@@ -14,8 +15,8 @@ import deleteIcon from './assets/delete.svg';
  *
  * Faithful to Figma: rows are 40px tall, separated by a `rgba(251,251,251,0.34)`
  * hairline; keys are divided by a `rgba(251,251,251,0.16)` hairline. Digits are
- * Red Hat Display Medium 16px @ 70% white; "Hecho" is 14px @ 100% white; Delete
- * is the 24px provided glyph.
+ * Red Hat Display Medium 16px @ 70% white; "Hecho" uses the success accent
+ * button treatment from Draftea Global; Delete is the 24px provided glyph.
  */
 
 /** Fixed keypad height (px) — 4 rows × 40px. Parents use this to size the
@@ -102,7 +103,11 @@ export function AmountKeypad({ onDigit, onDelete, onDone, onSwipeDown }: Props) 
                   key={ci}
                   type="button"
                   onClick={handler}
-                  className={`flex h-full flex-1 items-center justify-center px-4 transition-colors active:bg-[rgba(251,251,251,0.06)] ${
+                  className={`flex h-full flex-1 items-center justify-center px-4 transition-colors ${
+                    key.kind === 'done'
+                      ? 'gap-2 bg-[rgba(52,211,153,0.16)] active:bg-[rgba(52,211,153,0.22)]'
+                      : 'active:bg-[rgba(251,251,251,0.06)]'
+                  } ${
                     withDivider
                       ? 'border-r border-[rgba(251,251,251,0.16)]'
                       : ''
@@ -111,9 +116,18 @@ export function AmountKeypad({ onDigit, onDelete, onDone, onSwipeDown }: Props) 
                   {key.kind === 'delete' ? (
                     <img src={deleteIcon} alt="Borrar" className="size-6" />
                   ) : key.kind === 'done' ? (
-                    <span className="text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
-                      Hecho
-                    </span>
+                    <>
+                      <span className="relative size-[18px] shrink-0 overflow-hidden">
+                        <img
+                          src={doneCheckIcon}
+                          alt=""
+                          className="absolute inset-[18.71%_5%] h-[62.57%] w-[90%]"
+                        />
+                      </span>
+                      <span className="text-[14px] font-medium leading-[21px] text-[#34d399]">
+                        Hecho
+                      </span>
+                    </>
                   ) : (
                     <span className="text-[16px] font-medium leading-6 text-[rgba(251,251,251,0.7)]">
                       {key.label}
