@@ -22,7 +22,8 @@ const THUMB_INSET_PX = 2;
 // after a completed swipe, then onConfirm fires the success flow.
 const CONFIRM_LOADER_MS = 900;
 
-const PURPLE_CTA = 'linear-gradient(70.5deg, #4b20ff 0%, #9730ff 100%)';
+export const PRIMARY_PURPLE = '#4b20ff';
+const PURPLE_CTA = `linear-gradient(70.5deg, ${PRIMARY_PURPLE} 0%, #9730ff 100%)`;
 
 type Props = {
   stake: number;

@@ -13,6 +13,7 @@ import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
 import { ButtonPreviewMomios } from './ButtonPreviewMomios';
 import { SelectionGroups } from './SelectionGroups';
+import { SummaryOddsChangeCheckbox } from './SummaryOddsChangeCheckbox';
 import { SummarizedBooster } from './SummarizedBooster';
 import { SwipeToConfirm } from './SwipeToConfirm';
 import { useStakeKeypad } from './useStakeKeypad';
@@ -123,6 +124,9 @@ type Props = {
   onConfirm: () => void;
   /** Called on swipe-to-confirm interaction so the 4s auto-collapse resets. */
   onKeepAlive: () => void;
+  showSummaryOddsChangeCheckbox: boolean;
+  summaryOddsChangeChecked: boolean;
+  onToggleSummaryOddsChange: () => void;
   /** Parlay "Lista" tab — opens the full-screen summary sheet. */
   onOpenList: () => void;
 };
@@ -139,6 +143,9 @@ export function BetSlipSheet({
   onRemoveGroup,
   onConfirm,
   onKeepAlive,
+  showSummaryOddsChangeCheckbox,
+  summaryOddsChangeChecked,
+  onToggleSummaryOddsChange,
   onOpenList,
 }: Props) {
   // Numeric keypad for editing the amount. Opening it clears the value and
@@ -605,6 +612,13 @@ export function BetSlipSheet({
               swipe's pt-[10px] becomes the keypad→swipe / Monto→swipe gap as
               before), so it never affects the rest of the slip when removed. */}
           <SummarizedBooster />
+
+          {showSummaryOddsChangeCheckbox && (
+            <SummaryOddsChangeCheckbox
+              checked={summaryOddsChangeChecked}
+              onToggle={onToggleSummaryOddsChange}
+            />
+          )}
 
           {/* Swipe to confirm — shared component (remounts on collapse via key
               so its swipe/loader state resets). Stays pinned at the card bottom;

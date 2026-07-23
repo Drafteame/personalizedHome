@@ -24,6 +24,8 @@ const DEFAULT_STAKE = 200;
 const NAVBAR_UPPER_FADE = 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)';
 const NAVBAR_BACKDROP =
   'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.95) 100%)';
+const SUMMARY_ODDS_CHANGE_PREF_KEY =
+  'one-click-bet.summary-slip.accept-odds-change-hidden';
 
 /* ============================================================ */
 /*  Debug overlay helpers                                        */
@@ -62,6 +64,15 @@ function useDebug() {
 function computeCumulativeOdds(selections: Selection[]): number {
   if (selections.length === 0) return 0;
   return selections.reduce((acc, s) => acc * s.odds, 1);
+}
+
+function readSummaryOddsChangeHiddenPreference() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SUMMARY_ODDS_CHANGE_PREF_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }
 
 /* ============================================================ */
@@ -121,6 +132,10 @@ export function App() {
   // Entry amount (shared across both bet-slip views + the success sheet). Edited
   // via the numeric keypad; reset to the default on each new entry.
   const [stake, setStake] = useState(DEFAULT_STAKE);
+  const [summaryOddsChangeHidden, setSummaryOddsChangeHidden] = useState(
+    readSummaryOddsChangeHiddenPreference,
+  );
+  const [summaryOddsChangeChecked, setSummaryOddsChangeChecked] = useState(false);
   const [speedScale, setSpeedScale] = useState(1);
   const [live, setLive] = useState<ButtonLiveState | null>(null);
   // PASS 3 — Tier 3 odds effect selector (default flames; toggled in debug).
@@ -263,10 +278,22 @@ export function App() {
     setEntrySheet(true);
   }, []);
 
+  const persistSummaryOddsChangePreference = useCallback(() => {
+    if (!summaryOddsChangeChecked) return;
+    setSummaryOddsChangeHidden(true);
+    try {
+      window.localStorage.setItem(SUMMARY_ODDS_CHANGE_PREF_KEY, 'true');
+    } catch {
+      // Ignore storage failures; the in-memory flag still hides the row for
+      // this session.
+    }
+  }, [summaryOddsChangeChecked]);
+
   // Entrada nueva / swipe-down / backdrop-tap on the success sheet → close the
   // card and play the flying-ticket microinteraction. The entry is recorded (+
   // the count badge pops) only once the ticket lands, in finishEntryCreated.
   const successNewEntry = useCallback(() => {
+    persistSummaryOddsChangePreference();
     preserveSelectionsOnFinishRef.current = true;
     // Release the offer immediately. Previously the placed selections stayed
     // in state until EntryCreatedOverlay's flight animation called onDone().
@@ -278,16 +305,17 @@ export function App() {
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
-  }, []);
+  }, [persistSummaryOddsChangePreference]);
 
   // Reusar → same flying-ticket close, but KEEP the selections so a fresh slip
   // rebuilds once the ticket lands (finishEntryCreated skips the clear).
   const successReuse = useCallback(() => {
+    persistSummaryOddsChangePreference();
     preserveSelectionsOnFinishRef.current = true;
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
-  }, []);
+  }, [persistSummaryOddsChangePreference]);
 
   // LIGHTNING STRAIGHT BET — long-press a pick to create the entry instantly.
   // First applies the SELECTED state to the pressed pick (add it, so its button
@@ -655,6 +683,15 @@ export function App() {
                           onRemoveGroup={removeGroup}
                           onConfirm={confirmBet}
                           onKeepAlive={() => setKeepAliveNonce((n) => n + 1)}
+                          showSummaryOddsChangeCheckbox={
+                            !summaryOddsChangeHidden
+                          }
+                          summaryOddsChangeChecked={
+                            summaryOddsChangeChecked
+                          }
+                          onToggleSummaryOddsChange={() =>
+                            setSummaryOddsChangeChecked((checked) => !checked)
+                          }
                           // The "Resumen" floating card (BetSlipFullSheet) is
                           // reserved for 3+ selections. At 1–2 selections the
                           // summarized slip is the only surface, so a swipe-up
