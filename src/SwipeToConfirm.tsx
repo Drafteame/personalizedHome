@@ -75,9 +75,16 @@ export function SwipeToConfirm({
 
   useEffect(() => {
     if (!confirming) return;
-    const t = setTimeout(onConfirm, CONFIRM_LOADER_MS);
+    const t = setTimeout(() => {
+      // Presence animations can retain/reopen this instance between entries.
+      // Reset after submission instead of relying on an eventual unmount.
+      swipeX.stop();
+      swipeX.set(0);
+      setConfirming(false);
+      onConfirm();
+    }, CONFIRM_LOADER_MS);
     return () => clearTimeout(t);
-  }, [confirming, onConfirm]);
+  }, [confirming, onConfirm, swipeX]);
 
   return (
     <div
