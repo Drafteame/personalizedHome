@@ -8,16 +8,17 @@ import {
   type MotionValue,
 } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import checkIcon from './assets/success-check.png';
+import checkIcon from './assets/success-check-3d.png';
 
 /**
  * EntryCreatedOverlay — the success confirmation animation.
  *
  * ONE shape for every success flow (swipe-to-confirm on the expanded slip,
  * swipe-to-play on the "Resumen de tu entrada" full sheet, AND the lightning
- * long-press): a green ticket/stub (Figma 33822:171080 — 233×108, rounded
+ * long-press): a compact green ticket/stub (Figma 35252:75429 — 154.975×61, rounded
  * corners + a semicircular notch on the mid-left/right edges, radial-green
- * fill, gradient rim, green glow). The old full-width green card is gone.
+ * fill, soft white rim, green glow, 3D check + rotated two-line text).
+ * The old full-width green card is gone.
  *
  *   1. The ticket emerges where the slip was — a circular clip-path reveal
  *      from its center (keyframes `greenCircleIn` / `greenContentIn` in
@@ -36,21 +37,19 @@ import checkIcon from './assets/success-check.png';
  */
 
 const cfg = {
-  // How long the ticket holds in place before the genie flight. Kept SHORT so
-  // the whole thing reads as a brief microinteraction (the success card the
-  // user just closed already delivered the "entry created" message) rather
-  // than a primary status screen — a quick glance, then it flies to the tab.
-  confirmedHoldMs: 600,
+  // Readable hold before the genie flight, matching one-click-bet's compact
+  // ticket. Keep the reveal, celebration, and flight timings unchanged.
+  confirmedHoldMs: 1700,
   // Absolute lifecycle guard. Spring completion can be delayed indefinitely
   // when a browser backgrounds/throttles the page; the decorative ticket must
   // never keep the success state alive (and the offer suppressed) forever.
   lifecycleMaxMs: 3000,
-  // Ticket geometry (Figma 33822:171080). The shape itself (rounded corners +
+  // Ticket geometry (Figma 35252:75429). The shape itself (rounded corners +
   // mid-edge notches) is the exact Figma vector `TICKET_FILL_PATH`, authored in
-  // a 16..249 / 16..124 space, so the SVG uses viewBox `TICKET_VIEWBOX`.
+  // a 16..170.975 / 16..77 space, so the SVG uses viewBox `TICKET_VIEWBOX`.
   ticket: {
-    widthPx: 233,
-    heightPx: 108,
+    widthPx: 154.975,
+    heightPx: 61,
     bottomPx: 86, // sits 12px above the 74px-tall navbar
   },
   // One-shot celebration burst when the circular reveal completes — the
@@ -109,15 +108,15 @@ const cfg = {
   },
 };
 
-// Ticket outline — the exact Figma vector (node 33822:171081 "Subtract"):
+// Ticket outline — the exact Figma vector (node 35252:75430 "Subtract"):
 // rounded corners with Figma corner-smoothing + a semicircular notch cut into
-// the mid-left and mid-right edges. Authored in a 16..249 (w 233) / 16..124
-// (h 108) box, so the SVG renders it through TICKET_VIEWBOX. A centered stroke
+// the mid-left and mid-right edges. Authored in a 16..170.975 (w 154.975) / 16..77
+// (h 61) box, so the SVG renders it through TICKET_VIEWBOX. A centered stroke
 // is clipped by the svg viewport at the outer edges → reads as an inside
 // stroke, matching Figma.
 const TICKET_FILL_PATH =
-  'M213.8 16C226.12 16 232.281 15.9999 236.987 18.3975C241.127 20.5067 244.493 23.8731 246.603 28.0127C249 32.7187 249 38.8795 249 51.2002V56.6855C248.034 56.4745 247.03 56.3633 246 56.3633C238.268 56.3633 232 62.6313 232 70.3633C232 78.0953 238.268 84.3633 246 84.3633C247.03 84.3633 248.033 84.2511 249 84.04V88.7998C249 101.12 249 107.281 246.603 111.987C244.493 116.127 241.127 119.493 236.987 121.603C232.281 124 226.12 124 213.8 124H51.2002C38.8795 124 32.7187 124 28.0127 121.603C23.8731 119.493 20.5067 116.127 18.3975 111.987C15.9999 107.281 16 101.12 16 88.7998V84.3633C23.732 84.3633 30 78.0953 30 70.3633C30 62.6313 23.732 56.3633 16 56.3633V51.2002C16 38.8795 15.9999 32.7187 18.3975 28.0127C20.5067 23.8731 23.8731 20.5067 28.0127 18.3975C32.7187 15.9999 38.8795 16 51.2002 16H213.8Z';
-const TICKET_VIEWBOX = '16 16 233 108';
+  'M145.388 16C154.348 16 158.828 16.0003 162.251 17.7441C165.262 19.2781 167.709 21.7257 169.243 24.7363C170.659 27.5157 170.925 30.9926 170.975 37C165.458 37.0069 160.987 41.4814 160.987 47C160.987 52.5147 165.451 56.9859 170.963 56.999C170.89 62.4 170.579 65.6421 169.243 68.2637C167.709 71.2743 165.262 73.7219 162.251 75.2559C158.828 76.9997 154.348 77 145.388 77H41.5869C32.6264 77 28.1462 76.9997 24.7236 75.2559C21.713 73.7219 19.2654 71.2743 17.7314 68.2637C16.3957 65.6421 16.0839 62.4 16.0107 56.999C21.5228 56.9864 25.9873 52.515 25.9873 47C25.9873 41.4814 21.517 37.0069 16 37C16.05 30.9926 16.3153 27.5157 17.7314 24.7363C19.2654 21.7257 21.713 19.2781 24.7236 17.7441C28.1462 16.0003 32.6264 16 41.5869 16H145.388Z';
+const TICKET_VIEWBOX = '16 16 154.975 61';
 
 /** Green glow only (single drop-shadow → no ghosting). The rim stroke is drawn
  *  by the SVG path. Put on the wrapper so it follows the ticket's alpha.
@@ -127,9 +126,9 @@ function ticketGlow(glowV: number): string {
   return `drop-shadow(0 0 ${16 + glowV * 30}px rgba(54,229,169,${0.36 + glowV * 0.5}))`;
 }
 
-/** The ticket face — one SVG path (radial-green fill + gradient rim stroke,
- *  notches included) with the check + message overlaid. `entering` plays the
- *  content pop. Shared by the resting ticket and the flying clone. */
+/** The ticket face — one SVG path (radial-green fill + soft white rim stroke,
+ *  notches included) with the 3D check + rotated two-line message overlaid.
+ *  `entering` plays the content pop. Shared by the resting ticket and flying clone. */
 function TicketFace({ entering = false }: { entering?: boolean }) {
   return (
     <>
@@ -146,41 +145,50 @@ function TicketFace({ entering = false }: { entering?: boolean }) {
             cy="0"
             r="1"
             gradientUnits="userSpaceOnUse"
-            gradientTransform="translate(132.5 62.0909) rotate(90) scale(72.7548 67.0288)"
+            gradientTransform="translate(93.4878 38.0909) rotate(90) scale(72.7548 67.0318)"
           >
             <stop stopColor="#29C28A" />
             <stop offset="0.5" stopColor="#1DAC7C" />
             <stop offset="1" stopColor="#059669" />
           </radialGradient>
-          <linearGradient
-            id="ticketStroke"
-            x1="24"
-            y1="7.99925"
-            x2="242.898"
-            y2="133.265"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#34D399" stopOpacity="0.56" />
-            <stop offset="1" stopColor="#1B6D4F" />
-          </linearGradient>
         </defs>
         <path
           d={TICKET_FILL_PATH}
           fill="url(#ticketFill)"
           fillOpacity="0.95"
-          stroke="url(#ticketStroke)"
-          strokeWidth="1.5"
+          stroke="#FBFBFB"
+          strokeOpacity="0.32"
+          strokeWidth="2"
         />
       </svg>
       <div
-        className={`absolute inset-0 flex flex-col items-center justify-center gap-1${
+        className={`absolute inset-0 flex items-center justify-center gap-[6px]${
           entering ? ' animate-[greenContentIn_0.16s_cubic-bezier(0.16,1,0.3,1)]' : ''
         }`}
       >
-        <img src={checkIcon} alt="" width={36} height={36} aria-hidden />
-        <p className="text-[14px] font-black italic leading-[21px] text-[#fbfbfb]">
-          ¡ENTRADA CREADA!
-        </p>
+        <div
+          className="relative size-[36px] shrink-0"
+          style={{ filter: 'drop-shadow(0px 1px 4.1px rgba(0,78,53,0.71))' }}
+        >
+          <div className="absolute inset-[-3.13%]">
+            <img
+              src={checkIcon}
+              alt=""
+              className="absolute inset-0 size-full max-w-none object-cover"
+              aria-hidden
+            />
+          </div>
+          {/* Green color-burn tint over the icon — matches the Figma "ligh"
+              layer, keeping the metallic check in the ticket's green family. */}
+          <div className="absolute inset-[16.15%_15.1%_15.1%_16.15%] rounded-[100px] bg-[#34d399] opacity-50 mix-blend-color-burn blur-[11px]" />
+        </div>
+        <div className="flex h-[40.631px] w-[75.169px] items-center justify-center">
+          <p className="rotate-[-3.7deg] whitespace-nowrap text-[14px] font-black italic leading-[18px] text-[#fbfbfb]">
+            ¡ENTRADA
+            <br aria-hidden />
+            CREADA!
+          </p>
+        </div>
       </div>
     </>
   );
@@ -201,7 +209,7 @@ type BurstSpark = {
 /** Sparks on the ticket perimeter, aimed radially outward (+ jitter). */
 function makeBurst(): BurstSpark[] {
   const b = cfg.burst;
-  // Ticket aspect (233×108) — corrects the radial angle for the percentage
+  // Ticket aspect (154.975×61) — corrects the radial angle for the percentage
   // coordinate space so corners still fire diagonally.
   const aspect = cfg.ticket.widthPx / cfg.ticket.heightPx;
   return Array.from({ length: b.count }, (_, id) => {
