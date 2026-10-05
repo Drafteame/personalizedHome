@@ -557,10 +557,20 @@ export function SuccessEntrySheet({
               </div>
               {/* /TICKET */}
 
-              {/* BUTTONS — Compartir + Reusar, side by side. (Returning Home is
+              {/* BUTTONS — Reusar + Compartir, side by side. (Returning Home is
                   handled by swipe-down / backdrop-tap → onNewEntry.) 12px gap
                   above, between the ticket and the buttons. */}
               <div className="flex shrink-0 items-stretch gap-2 pb-4 pt-3">
+                <button
+                  type="button"
+                  onClick={onReuse}
+                  className="flex h-12 min-w-px flex-1 items-center justify-center gap-2 rounded-[12px] bg-[rgba(251,251,251,0.12)] active:scale-[0.99]"
+                >
+                  <img src={reuseIcon} alt="" className="size-4" />
+                  <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
+                    Reusar
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={onShare}
@@ -573,16 +583,6 @@ export function SuccessEntrySheet({
                   <img src={shareIcon} alt="" className="size-4" />
                   <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
                     Compartir
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onReuse}
-                  className="flex h-12 min-w-px flex-1 items-center justify-center gap-2 rounded-[12px] bg-[rgba(251,251,251,0.12)] active:scale-[0.99]"
-                >
-                  <img src={reuseIcon} alt="" className="size-4" />
-                  <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
-                    Reusar
                   </span>
                 </button>
               </div>
