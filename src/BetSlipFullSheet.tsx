@@ -6,21 +6,22 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { useStakeKeypad } from './useStakeKeypad';
 import { useVerticalSwipe } from './useVerticalSwipe';
+import { useHorizontalDragScroll } from './useHorizontalDragScroll';
 import { BoosterPromoTile, PromoSwitch } from './SummarizedBooster';
-import chevronIcon from './assets/chevron.svg';
-import chevronRightIcon from './assets/chevron_right.svg';
+import promoChevronRight from './assets/promo-chevron-right.svg';
 import clockIcon from './assets/clock.svg';
 import closeIcon from './assets/close.svg';
 import editIcon from './assets/edit.svg';
-import freebetIllus from './assets/freebet.png';
+import freebetIllus from './assets/apuestaGratis.png';
 import trashIcon from './assets/trash.svg';
 import { SelectionGroups } from './SelectionGroups';
 import { SwipeToConfirm } from './SwipeToConfirm';
-import type { Selection } from './types';
+import type { ActivePromo, Selection } from './types';
+import { formatPromoAmount, promoConfig, promoValues } from './promoConfig';
 
 /**
  * BetSlipFullSheet — the "Resumen de tu entrada" floating card.
@@ -36,12 +37,13 @@ import type { Selection } from './types';
  * Includes: header (delete-all trash + × + count + balance), scrollable
  * selections list, Monto/Momio/Ganancia footer, the horizontal promos
  * carousel, the "accept odds changes" checkbox, and swipe-to-play. Toggle switches
- * and the checkbox are CSS controls. STILL PENDING one asset: the countdown
- * clock icon — the countdown pills currently show the time text without it.
+ * and the checkbox are CSS controls. Mouse dragging scrolls the carousel; touch
+ * uses native horizontal scrolling. Ver todas sits below the promos (Quick Bet).
  *
  * Assets: close.svg (× + per-row remove), shield.svg (team placeholder),
  * edit.svg (Monto), chevron_right.svg (swipe thumb + Booster caret),
- * trash.svg (delete-all), freebet.png / booster.png (promo illustrations).
+ * trash.svg (delete-all), apuestaGratis.png / booster.png (promo illustrations),
+ * promo-chevron-right.svg (exact Quick Bet Ver todas icon).
  */
 
 const fmtOdds = (n: number) => `${n.toFixed(2)}x`;
@@ -88,15 +90,11 @@ function FreeBetPromoTile({
   onToggle: () => void;
 }) {
   return (
-    <div className="freebet-gradient-border flex h-[54px] w-[264px] shrink-0 snap-start items-center gap-2 rounded-[20px] py-[6px] pl-2 pr-[10px]">
-      <div
-        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[12px] p-0.5"
-        style={{
-          backgroundImage:
-            'linear-gradient(140.5deg, #f0abfc 0%, #6b47ff 100%)',
-        }}
-      >
-        <img src={freebetIllus} alt="" className="size-7 object-contain" />
+    <div data-promo="freebet" data-active={active}
+      style={active ? { backgroundImage: promoConfig.freebet.selectedBackground } : undefined}
+      className="freebet-gradient-border flex h-[54px] w-[264px] shrink-0 snap-start items-center gap-2 rounded-[20px] py-[6px] pl-2 pr-[10px]">
+      <div className="flex size-9 shrink-0 items-center justify-center">
+        <img src={freebetIllus} alt="" draggable={false} className="block size-full object-contain" />
       </div>
       <div className="flex min-w-px flex-1 flex-col items-start">
         <span className="whitespace-nowrap text-[14px] font-bold leading-[21px] text-[#fbfbfb]">
@@ -111,7 +109,7 @@ function FreeBetPromoTile({
           </div>
           <div className="h-4 w-px bg-[rgba(251,251,251,0.16)]" />
           <span className="whitespace-nowrap text-[14px] font-bold leading-[21px] text-[rgba(251,251,251,0.7)]">
-            $25
+            ${promoConfig.freeBetStake}
           </span>
         </div>
       </div>
@@ -125,44 +123,50 @@ function FreeBetPromoTile({
   );
 }
 
-function MorePromosTile() {
+function AllPromosButton() {
   return (
     <button
       type="button"
-      className="flex h-[54px] w-[75px] shrink-0 snap-start flex-col items-center justify-center rounded-[20px] border border-[rgba(251,251,251,0.16)] bg-[rgba(251,251,251,0.04)] active:opacity-70"
-      aria-label="Ver más promociones"
+      className="mt-2 flex w-full shrink-0 items-center justify-center gap-0.5 border-b border-[rgba(251,251,251,0.16)] pb-2 active:opacity-70"
+      aria-label="Ver todas las promociones"
     >
-      <img src={chevronIcon} alt="" className="size-5 -rotate-90" />
       <span className="whitespace-nowrap text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
-        Ver más
+        Ver todas
       </span>
+      <img src={promoChevronRight} alt="" draggable={false} />
     </button>
   );
 }
 
-function PromoCarousel({ toggleEnabled }: { toggleEnabled: boolean }) {
-  const [freeBetActive, setFreeBetActive] = useState(false);
-  const [boosterActive, setBoosterActive] = useState(false);
-
+function PromoCarousel({ toggleEnabled, activePromo, onPromoChange }: {
+  toggleEnabled: boolean;
+  activePromo: ActivePromo;
+  onPromoChange: (promo: ActivePromo) => void;
+}) {
+  const mouseScroll = useHorizontalDragScroll();
   return (
-    <div
-      data-scroll
-      className="no-scrollbar -mx-[10px] mt-[10px] flex snap-x snap-mandatory gap-2 overflow-x-auto px-[10px] scroll-px-[10px]"
-      style={{ touchAction: 'pan-x' }}
-    >
-      <FreeBetPromoTile
-        active={freeBetActive}
-        toggleEnabled={toggleEnabled}
-        onToggle={() => setFreeBetActive((v) => !v)}
-      />
-      <BoosterPromoTile
-        active={boosterActive}
-        className="h-[54px] w-[268px] shrink-0 snap-start"
-        toggleEnabled={toggleEnabled}
-        onToggle={() => setBoosterActive((v) => !v)}
-      />
-      <MorePromosTile />
-    </div>
+    <>
+      <div
+        {...mouseScroll}
+        data-scroll
+        aria-label="Promociones disponibles"
+        className="no-scrollbar -mx-[10px] mt-[10px] flex cursor-grab snap-x snap-mandatory select-none gap-2 overflow-x-auto px-[10px] scroll-px-[10px] data-[dragging=true]:cursor-grabbing"
+        style={{ touchAction: 'pan-x' }}
+      >
+        <FreeBetPromoTile
+          active={activePromo === 'freebet'}
+          toggleEnabled={toggleEnabled}
+          onToggle={() => onPromoChange(activePromo === 'freebet' ? null : 'freebet')}
+        />
+        <BoosterPromoTile
+          active={activePromo === 'booster'}
+          className="h-[54px] w-[268px] shrink-0 snap-start"
+          toggleEnabled={toggleEnabled}
+          onToggle={() => onPromoChange(activePromo === 'booster' ? null : 'booster')}
+        />
+      </div>
+      <AllPromosButton />
+    </>
   );
 }
 
@@ -192,6 +196,8 @@ type Props = {
   onClose: () => void;
   /** Swipe-to-play — places the bet. */
   onConfirm: () => void;
+  activePromo: ActivePromo;
+  onPromoChange: (promo: ActivePromo) => void;
 };
 
 export function BetSlipFullSheet({
@@ -204,6 +210,8 @@ export function BetSlipFullSheet({
   onClearAll,
   onClose,
   onConfirm,
+  activePromo,
+  onPromoChange,
 }: Props) {
   const orderedSelections = [...selections].reverse(); // latest first
 
@@ -222,7 +230,17 @@ export function BetSlipFullSheet({
   }, [keypad.open]);
   // Winnings track the amount being edited (draft while the keypad is open,
   // otherwise the saved stake) so Monto / Ganancia / swipe all stay in sync.
-  const potentialWin = Math.round(cumulativeOdds * keypad.displayValue);
+  const values = promoValues(activePromo, keypad.displayValue, cumulativeOdds);
+  const potentialWin = values.winnings;
+  const [winWhole, winCents] = formatPromoAmount(potentialWin).split('.');
+  const freeBet = activePromo === 'freebet';
+  const booster = activePromo === 'booster';
+  const changePromo = (promo: ActivePromo) => {
+    // Finish any typed draft before locking the field. The paid stake stays
+    // intact underneath the fixed free bet, and is restored when it is off.
+    if (promo === 'freebet' && keypad.open) keypad.done();
+    onPromoChange(promo);
+  };
 
   // SHAPE MORPH — the card grows out of the slip footprint on open and shrinks
   // back INTO it on close (never slides like a bottom sheet). `openP` (1 = full
@@ -513,22 +531,24 @@ export function BetSlipFullSheet({
             exact 10px above/below without the gap doubling around a 0-height
             (closed) slot. */}
         <div className="flex shrink-0 flex-col border-t border-[rgba(251,251,251,0.16)] px-[10px] pb-2 pt-[10px]">
-          <div className="flex h-[59px] items-center gap-2">
+          <div className="flex h-[59px] items-center gap-2" data-promo-values={activePromo ?? 'none'}>
             {/* Monto — tap to open the numeric keypad. */}
             <div className="relative flex min-w-px flex-1 flex-col items-center pt-[11px]">
               <button
                 type="button"
                 onClick={keypad.openKeypad}
+                disabled={freeBet}
+                aria-label={freeBet ? 'Monto de apuesta gratis' : 'Editar monto'}
                 className={`flex h-12 w-full items-center gap-2 overflow-hidden rounded-[12px] border p-3 text-left active:opacity-80 ${
                   keypad.open
                     ? 'border-[#fbfbfb]'
                     : 'border-[rgba(251,251,251,0.16)]'
                 }`}
               >
-                <img src={editIcon} alt="" className="size-3.5" />
-                <p className="min-w-px flex-1 text-[16px] font-medium leading-6 text-[#fbfbfb]">
-                  ${keypad.displayText}
-                  {keypad.open && (
+                <img src={editIcon} alt="" className={`size-3.5 ${freeBet ? 'opacity-30' : ''}`} />
+                <p className={`min-w-px flex-1 text-[16px] font-medium leading-6 ${freeBet ? 'text-[rgba(251,251,251,0.32)]' : 'text-[#fbfbfb]'}`}>
+                  ${freeBet ? promoConfig.freeBetStake : keypad.displayText}
+                  {keypad.open && !freeBet && (
                     <span
                       aria-hidden
                       className="ml-px inline-block h-[1em] w-[2px] animate-[caretBlink_1s_step-end_infinite] bg-current align-middle"
@@ -544,18 +564,37 @@ export function BetSlipFullSheet({
             </div>
             {/* Momio */}
             <div className="flex min-w-px flex-1 flex-col items-center justify-center py-0.5">
-              <span className="text-[14px] font-medium leading-[21px] text-[rgba(251,251,251,0.5)]">
-                Momio
-              </span>
-              <span className="text-[14px] font-black leading-[21px] text-[#fbfbfb]">
-                {fmtOdds(cumulativeOdds)}
-              </span>
+              {booster ? (
+                <span
+                  className="flex h-4 items-center rounded-xl px-1.5 text-[12px] font-black italic leading-[18px] text-black"
+                  style={{ backgroundImage: promoConfig.booster.badgeBackground }}
+                >
+                  BOOST +20%
+                </span>
+              ) : (
+                <span className="text-[14px] font-medium leading-[21px] text-[rgba(251,251,251,0.5)]">
+                  Momio
+                </span>
+              )}
+              <div className="flex flex-wrap items-baseline justify-center gap-0.5">
+                {booster && (
+                  <span className="text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.5)] line-through">
+                    {fmtOdds(cumulativeOdds)}
+                  </span>
+                )}
+                <span
+                  className={`text-[14px] font-black leading-[21px] ${booster ? 'bg-clip-text text-transparent' : 'text-[#fbfbfb]'}`}
+                  style={booster ? { backgroundImage: promoConfig.booster.oddsBackground } : undefined}
+                >
+                  {fmtOdds(values.odds)}
+                </span>
+              </div>
             </div>
             {/* Ganancia */}
             <div className="relative flex min-w-px flex-1 flex-col items-center pt-[11px]">
               <div className="flex h-12 w-full items-center justify-center overflow-hidden rounded-[12px] border border-[rgba(251,251,251,0.12)] p-3">
-                <p className="text-[16px] font-bold leading-6 text-[#fbbf24]">
-                  ${potentialWin}
+                <p className={`whitespace-nowrap text-[16px] font-bold leading-6 ${booster ? 'bg-clip-text text-transparent' : 'text-[#fbbf24]'}`} style={booster ? { backgroundImage: promoConfig.booster.winningsBackground } : undefined}>
+                  ${activePromo ? <>{winWhole}<span className="text-[12px]">.{winCents}</span></> : potentialWin}
                 </p>
               </div>
               <div className="absolute left-2 top-0 flex items-center rounded-[4px] bg-[#121212] px-1.5 py-0.5">
@@ -590,10 +629,13 @@ export function BetSlipFullSheet({
             </div>
           </motion.div>
 
-          {/* Promos — horizontal carousel from Figma nodes 34464:67899,
-              34464:67859, and 34464:67944. `gap-2` is the requested 8px
-              horizontal separation between promo components. */}
-          <PromoCarousel toggleEnabled={selections.length >= 3} />
+          {/* Promos — 8px carousel gaps; Quick Bet 2194:30544 places the
+              centered Ver todas button underneath the scrollable tiles. */}
+          <PromoCarousel
+            toggleEnabled={selections.length >= promoConfig.minimumSelections}
+            activePromo={activePromo}
+            onPromoChange={changePromo}
+          />
 
           {/* Accept odds changes — CSS checkbox. `mt-3` restores the footer's
               inter-row spacing (was the removed flex `gap-3`). */}
@@ -616,7 +658,7 @@ export function BetSlipFullSheet({
               the swipe thumb (which owns the horizontal drag gesture). */}
           <div className="mt-3" data-scroll>
             <SwipeToConfirm
-              stake={keypad.displayValue}
+              stake={values.stake}
               onConfirm={onConfirm}
               heightPx={44}
             />

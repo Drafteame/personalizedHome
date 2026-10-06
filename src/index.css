@@ -421,3 +421,11 @@ body {
 .freebet-gradient-border::before {
   background: linear-gradient(140.5deg, rgba(240, 171, 252, 0.7) 0%, rgba(107, 71, 255, 0.7) 100%);
 }
+
+/* Selected promo backgrounds/borders: Quick Bet 2194:29841 / 2194:30544. */
+.booster-gradient-border[data-active='true']::before {
+  background: #ffa65b;
+}
+.freebet-gradient-border[data-active='true']::before {
+  background: #f0abfc;
+}
