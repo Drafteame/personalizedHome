@@ -8,7 +8,8 @@ import { BetSlipFullSheet } from './BetSlipFullSheet';
 import { BetSlipSheet } from './BetSlipSheet';
 import { EntryCreatedOverlay } from './EntryCreatedOverlay';
 import { SuccessEntrySheet } from './SuccessEntrySheet';
-import type { Selection, Tier } from './types';
+import type { ActivePromo, Selection, Tier } from './types';
+import { promoConfig } from './promoConfig';
 
 // Lightning bet: how long the pressed pick shows its selected state before the
 // entry-creation animation starts.
@@ -132,6 +133,19 @@ export function App() {
   // Entry amount (shared across both bet-slip views + the success sheet). Edited
   // via the numeric keypad; reset to the default on each new entry.
   const [stake, setStake] = useState(DEFAULT_STAKE);
+  const [activePromo, setActivePromo] = useState<ActivePromo>(null);
+  // Confirmation freezes the applied offer, independent of fresh feed picks
+  // made while the decorative ticket completes after the success card closes.
+  const [placedEntry, setPlacedEntry] = useState<{
+    promo: ActivePromo; stake: number; baseOdds: number;
+  } | null>(null);
+  // The previous entry's decorative ticket can overlap a fresh entry. Keep
+  // its theme separate so new confirmations cannot recolor it or lose theirs.
+  const [ticketPromo, setTicketPromo] = useState<ActivePromo>(null);
+  const slipPromo = selections.length >= promoConfig.minimumSelections ? activePromo : null;
+  useEffect(() => {
+    if (selections.length < promoConfig.minimumSelections) setActivePromo(null);
+  }, [selections.length]);
   const [summaryOddsChangeHidden, setSummaryOddsChangeHidden] = useState(
     readSummaryOddsChangeHiddenPreference,
   );
@@ -273,10 +287,12 @@ export function App() {
   // slip collapses; the success sheet grows out of the slip footprint. The
   // selections stay mounted so the sheet can list them.
   const confirmBet = useCallback(() => {
+    setPlacedEntry({ promo: slipPromo, stake, baseOdds: cumulativeOdds });
+    setActivePromo(null); // Reuse rebuilds a fresh slip; an offer isn't auto-reapplied.
     setListOpen(false);
     setExpanded(false);
     setEntrySheet(true);
-  }, []);
+  }, [slipPromo, stake, cumulativeOdds]);
 
   const persistSummaryOddsChangePreference = useCallback(() => {
     if (!summaryOddsChangeChecked) return;
@@ -294,6 +310,7 @@ export function App() {
   // the count badge pops) only once the ticket lands, in finishEntryCreated.
   const successNewEntry = useCallback(() => {
     persistSummaryOddsChangePreference();
+    setTicketPromo(placedEntry?.promo ?? null);
     preserveSelectionsOnFinishRef.current = true;
     // Release the offer immediately. Previously the placed selections stayed
     // in state until EntryCreatedOverlay's flight animation called onDone().
@@ -302,20 +319,22 @@ export function App() {
     // interaction state must not depend on it.
     setSelections([]);
     setStake(DEFAULT_STAKE);
+    setActivePromo(null);
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
-  }, [persistSummaryOddsChangePreference]);
+  }, [persistSummaryOddsChangePreference, placedEntry]);
 
   // Reusar → same flying-ticket close, but KEEP the selections so a fresh slip
   // rebuilds once the ticket lands (finishEntryCreated skips the clear).
   const successReuse = useCallback(() => {
     persistSummaryOddsChangePreference();
+    setTicketPromo(placedEntry?.promo ?? null);
     preserveSelectionsOnFinishRef.current = true;
     setEntrySheet(false);
     setExpanded(false);
     setSuccess(true);
-  }, [persistSummaryOddsChangePreference]);
+  }, [persistSummaryOddsChangePreference, placedEntry]);
 
   // LIGHTNING STRAIGHT BET — long-press a pick to create the entry instantly.
   // First applies the SELECTED state to the pressed pick (add it, so its button
@@ -325,6 +344,9 @@ export function App() {
   const lightningBet = useCallback((id: string) => {
     const pick = MOCK_PICKS.find((p) => p.id === id);
     if (!pick) return;
+    setPlacedEntry(null);
+    setTicketPromo(null);
+    setActivePromo(null);
     playSelectionHaptic();
     setListOpen(false);
     setExpanded(false);
@@ -342,6 +364,7 @@ export function App() {
   const finishEntryCreated = useCallback(() => {
     setSuccess(false);
     setLightning(false);
+    setTicketPromo(null);
     // Reusar preserves the placed slip. Entrada nueva already cleared the
     // placed slip synchronously and preserves any picks made during the ticket.
     // Lightning is the only path that still needs completion-time cleanup.
@@ -726,6 +749,8 @@ export function App() {
                   selections={selections}
                   cumulativeOdds={cumulativeOdds}
                   stake={stake}
+                  activePromo={slipPromo}
+                  onPromoChange={setActivePromo}
                   onStakeChange={setStake}
                   onRemove={removeSelection}
                   onRemoveGroup={removeGroup}
@@ -749,6 +774,7 @@ export function App() {
                 set `success`), and for the lightning long-press. */}
             {success && (
               <EntryCreatedOverlay
+                promo={ticketPromo}
                 onCatch={() => setEntryBump((n) => n + 1)}
                 onDone={finishEntryCreated}
               />
@@ -762,8 +788,9 @@ export function App() {
                 <SuccessEntrySheet
                   key="success-entry-sheet"
                   selections={selections}
-                  cumulativeOdds={cumulativeOdds}
-                  stake={stake}
+                  cumulativeOdds={placedEntry?.baseOdds ?? cumulativeOdds}
+                  stake={placedEntry?.stake ?? stake}
+                  promo={placedEntry?.promo ?? null}
                   onNewEntry={successNewEntry}
                   onReuse={successReuse}
                 />

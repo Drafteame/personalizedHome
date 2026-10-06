@@ -10,10 +10,13 @@ import { useVerticalSwipe } from './useVerticalSwipe';
 import logoDraftea from './assets/logo-draftea.svg';
 import reuseIcon from './assets/reuse.svg';
 import shareIcon from './assets/share.svg';
-import successIllustration from './assets/success-illustration.svg';
+import successIllustration from './assets/checkIlus.png';
 import ticketHeaderBg from './assets/ticket-header-bg.svg';
 import { SelectionGroups } from './SelectionGroups';
-import type { Selection } from './types';
+import type { ActivePromo, Selection } from './types';
+import boosterIllustration from './assets/booster.png';
+import freeBetIllustration from './assets/apuestaGratis.png';
+import { formatPromoAmount, promoConfig, promoValues } from './promoConfig';
 
 /**
  * SuccessEntrySheet — the "¡Entrada creada!" confirmation card (Figma
@@ -107,7 +110,7 @@ const DASH_LINE = {
     'repeating-linear-gradient(to right, rgba(251,251,251,0.32) 0, rgba(251,251,251,0.32) 10px, transparent 10px, transparent 20px)',
 };
 
-function TicketOutline({ notchY }: { notchY: number }) {
+function TicketOutline({ notchY, promo }: { notchY: number; promo: ActivePromo }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
@@ -164,6 +167,18 @@ function TicketOutline({ notchY }: { notchY: number }) {
           preserveAspectRatio="none"
         >
           <defs>
+            {promo && <>
+              <linearGradient id="promoTicketBorder" x1="0" y1="0.5" x2="1" y2="0.5" gradientTransform={promoConfig[promo].paintTransform}>
+                <stop stopColor={promoConfig[promo].colors[0]} />
+                <stop offset="1" stopColor={promoConfig[promo].colors[1]} />
+              </linearGradient>
+              <linearGradient id="promoTicketFade" x1="0" y1="0" x2="0" y2="1">
+                <stop stopColor="white" />
+                <stop offset={fadeStart} stopColor="white" />
+                <stop offset="1" stopColor="black" />
+              </linearGradient>
+              <mask id="promoTicketMask"><rect width={w} height={h} fill="url(#promoTicketFade)" /></mask>
+            </>}
             <linearGradient
               id="ticketBorderFade"
               gradientUnits="userSpaceOnUse"
@@ -183,7 +198,8 @@ function TicketOutline({ notchY }: { notchY: number }) {
           </defs>
           <path
             d={d}
-            stroke="url(#ticketBorderFade)"
+            stroke={promo ? 'url(#promoTicketBorder)' : 'url(#ticketBorderFade)'}
+            mask={promo ? 'url(#promoTicketMask)' : undefined}
             strokeWidth={STROKE_WIDTH}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
@@ -205,6 +221,7 @@ type Props = {
   onReuse: () => void;
   /** Compartir — visual only for now. */
   onShare?: () => void;
+  promo?: ActivePromo;
 };
 
 export function SuccessEntrySheet({
@@ -214,8 +231,10 @@ export function SuccessEntrySheet({
   onNewEntry,
   onReuse,
   onShare,
+  promo = null,
 }: Props) {
-  const potentialWin = Math.round(cumulativeOdds * stake);
+  const values = promoValues(promo, stake, cumulativeOdds);
+  const potentialWin = values.winnings;
   const orderedSelections = [...selections].reverse(); // latest first
 
   // SHAPE MORPH — the card grows out of the slip footprint on open and shrinks
@@ -453,6 +472,7 @@ export function SuccessEntrySheet({
                 and the buttons all align to it. */}
             <motion.div
               className="relative flex max-h-full w-full flex-col px-4"
+              data-success-promo={promo ?? 'none'}
               style={{ opacity: contentOpacity }}
             >
               {/* Green success glow across the top edge — spans the full card
@@ -460,7 +480,7 @@ export function SuccessEntrySheet({
               <div
                 aria-hidden
                 className="pointer-events-none absolute -inset-x-4 top-0 h-[100px] opacity-[0.32] blur-[50px]"
-                style={{ backgroundColor: '#34d399' }}
+                style={promo ? { backgroundImage: promoConfig[promo].successBackground } : { backgroundColor: '#34d399' }}
               />
 
               {/* DRAFTEA watermark (Figma 33938:331677) — faint repeated logotype
@@ -485,7 +505,7 @@ export function SuccessEntrySheet({
                 ref={ticketRef}
                 className="relative flex min-h-px flex-1 flex-col"
               >
-                <TicketOutline notchY={notchY} />
+                <TicketOutline notchY={notchY} promo={promo} />
               {/* HEADER — title + ganancia / entrada / momio + green check. */}
               <div className="relative flex shrink-0 items-center gap-1 px-3 pb-2 pt-1">
                 <div className="flex min-w-px flex-1 flex-col gap-0.5 py-2">
@@ -497,23 +517,25 @@ export function SuccessEntrySheet({
                       $
                     </span>
                     <span className="text-[18px] font-black leading-[27px] text-[#fbfbfb]">
-                      {potentialWin}
+                      {promo ? formatPromoAmount(potentialWin) : potentialWin}
                     </span>
                     <span className="text-[14px] font-normal leading-[21px] text-[rgba(251,251,251,0.5)]">
                       Ganancia potencial
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 text-[14px] font-normal leading-[21px] text-[rgba(251,251,251,0.5)]">
-                    <span className="whitespace-nowrap">Entrada: ${stake}</span>
-                    <span className="whitespace-nowrap">Momio: {fmtOdds(cumulativeOdds)}</span>
+                    {promo === 'freebet' ? <span className="flex items-center gap-0.5 whitespace-nowrap"><span className="rounded-[6px] px-1 text-[12px] font-bold leading-[20px] text-black" style={{ backgroundImage: promoConfig.freebet.successBadgeBackground }}>Apuesta gratis</span>${values.stake}</span> : <span className="whitespace-nowrap">Entrada: ${stake}</span>}
+                    {promo === 'booster' ? <span className="flex flex-wrap items-baseline gap-0.5"><span className="rounded-[6px] px-1 text-[12px] font-bold leading-[20px] text-black" style={{ backgroundImage: promoConfig.booster.successBadgeBackground }}>Booster 20%</span><span className="bg-clip-text text-[14px] font-black text-transparent" style={{ backgroundImage: promoConfig.booster.successBadgeBackground }}>{fmtOdds(values.odds)}</span><span className="text-[12px] text-[rgba(251,251,251,0.32)] line-through">{fmtOdds(cumulativeOdds)}</span></span> : <span className="whitespace-nowrap">Momio: {fmtOdds(cumulativeOdds)}</span>}
                   </div>
                 </div>
-                <img
+                {promo ? <div className="relative size-14 shrink-0 self-start mt-2" aria-hidden>
+                  <img src={promo === 'booster' ? boosterIllustration : freeBetIllustration} alt="" className={promo === 'booster' ? 'absolute inset-[-19.38%_-18.91%_-16.83%_-17.3%] h-[136.21%] w-[136.21%] max-w-none rotate-12 object-contain' : 'size-full object-contain'} />
+                </div> : <img
                   src={successIllustration}
                   alt=""
                   className="size-[72px] shrink-0"
                   aria-hidden
-                />
+                />}
               </div>
 
               {/* DRAFTEA divider — logo flanked by two hairlines. The notch

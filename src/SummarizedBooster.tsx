@@ -1,6 +1,7 @@
 import boosterIllus from './assets/booster.png';
 import chevronRightIcon from './assets/chevron_right.svg';
 import clockIcon from './assets/clock.svg';
+import { promoConfig } from './promoConfig';
 
 /**
  * SummarizedBooster — the standalone "Booster" incentive row shown in the
@@ -23,7 +24,7 @@ import clockIcon from './assets/clock.svg';
  *     non-interactive, and applies no benefit.
  *
  * Visual = Figma "booster" 34464:67859 (Draftea Global): orange-bordered
- * (#ffa65b) 20px-radius row · gradient illustration chip · "Booster NFL 20%" +
+ * (#ffa65b) 20px-radius row · transparent 36px illustration slot · "Booster NFL 20%" +
  * caret · countdown pill (23h : 23m) · disabled off-toggle.
  */
 
@@ -43,7 +44,7 @@ export function PromoSwitch({
 }) {
   const trackClassName = [
     'flex h-8 w-[52px] shrink-0 items-center rounded-full px-1 transition-colors',
-    active ? 'justify-end bg-[#22c55e]' : 'justify-start bg-[rgba(251,251,251,0.16)]',
+    active ? 'justify-end bg-[#34d399]' : 'justify-start bg-[rgba(251,251,251,0.16)]',
     enabled ? '' : 'opacity-40',
   ]
     .filter(Boolean)
@@ -66,7 +67,7 @@ export function PromoSwitch({
       onPointerDownCapture={(e) => e.stopPropagation()}
       className={trackClassName}
     >
-      <div className="size-6 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.24)]" />
+      <div className="size-6 rounded-full bg-[#fbfbfb] shadow-[0_2px_4px_rgba(0,0,0,0.24)]" />
     </button>
   );
 }
@@ -91,16 +92,11 @@ export function BoosterPromoTile({
   return (
     // Border is a 50° orange→pink GRADIENT stroke (Figma), painted by the
     // masked .booster-gradient-border ::before — not a solid color.
-    <div className={tileClassName}>
-      {/* Illustration chip */}
-      <div
-        className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[12px] p-0.5"
-        style={{
-          backgroundImage:
-            'linear-gradient(50deg, #ffa65b 2%, #f0abfc 103%)',
-        }}
-      >
-        <img src={boosterIllus} alt="" className="size-7 object-contain" />
+    <div className={tileClassName} data-promo="booster" data-active={active}
+      style={active ? { backgroundImage: promoConfig.booster.selectedBackground } : undefined}>
+      {/* Exact supplied illustration fills the transparent 36px image slot. */}
+      <div className="flex size-9 shrink-0 items-center justify-center">
+        <img src={boosterIllus} alt="" draggable={false} className="block size-full object-contain" />
       </div>
 
       {/* Title + countdown */}
