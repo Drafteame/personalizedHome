@@ -18,6 +18,8 @@ import chevronRightIcon from './assets/chevron_right.svg';
 const CONFIRM_END_TOLERANCE_PX = 2;
 // Thumb inset from the track edge (matches the thumb's left-[2px]).
 const THUMB_INSET_PX = 2;
+// Shared by the thumb and the label's reserved space (48px, formerly w-12).
+const THUMB_WIDTH_PX = 48;
 // Simulated ticket-creation time — the thumb shows a spinner for this long
 // after a completed swipe, then onConfirm fires the success flow.
 const CONFIRM_LOADER_MS = 900;
@@ -104,8 +106,8 @@ export function SwipeToConfirm({
         aria-label={
           confirming ? 'Creando entrada' : `Desliza para jugar por $${stake}`
         }
-        className="absolute left-[2px] top-[2px] z-10 flex w-12 items-center justify-center rounded-full"
-        style={{ x: swipeX, height: inner, backgroundImage: PURPLE_CTA }}
+        className="absolute left-[2px] top-[2px] z-10 flex items-center justify-center rounded-full"
+        style={{ x: swipeX, width: THUMB_WIDTH_PX, height: inner, backgroundImage: PURPLE_CTA }}
         drag={confirming ? false : 'x'}
         dragConstraints={trackRef}
         dragElastic={0.12}
@@ -127,7 +129,12 @@ export function SwipeToConfirm({
           />
         )}
       </motion.button>
-      <p className="w-full text-center text-[13px] font-medium leading-4 text-[rgba(251,251,251,0.7)]">
+      {/* Center in the resting space after the thumb; keep this fixed during
+          dragging/loading so the label never jumps or follows the thumb. */}
+      <p
+        className="pointer-events-none absolute inset-y-0 flex items-center justify-center text-center text-[13px] font-medium leading-4 text-[rgba(251,251,251,0.7)]"
+        style={{ left: THUMB_INSET_PX + THUMB_WIDTH_PX, right: THUMB_INSET_PX }}
+      >
         Desliza para jugar por: ${stake}
       </p>
     </div>
