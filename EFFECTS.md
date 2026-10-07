@@ -301,3 +301,5 @@ Flip to `true` to restore everything documented above.
 ---
 
 *If something significant changes — an effect is added, removed, moved between tiers, retuned, or its gate condition changes — update this file in the same commit. The `audit` agent prompt that produced the current version is preserved in chat history if a full re-audit is needed later.*
+
+**Swipe-to-confirm label alignment (`swipeTextAlignment`)** — shared `SwipeToConfirm` centers its label in the resting track space after the 48px thumb: left inset = 2px + 48px = 50px; right inset = 2px. The label is vertically centered, pointer-free and fixed during dragging/loading. Track padding, thumb geometry, drag/confirm thresholds, loader timing and callbacks are unchanged; summarized and full slips share the fix.
