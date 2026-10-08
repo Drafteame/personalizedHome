@@ -1,5 +1,5 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import chevronRightIcon from './assets/chevron_right.svg';
 
 /**
@@ -20,6 +20,10 @@ const CONFIRM_END_TOLERANCE_PX = 2;
 const THUMB_INSET_PX = 2;
 // Shared by the thumb and the label's reserved space (48px, formerly w-12).
 const THUMB_WIDTH_PX = 48;
+// Optical adjustment and breathing room around the label, in CSS pixels.
+const LABEL_OPTICAL_OFFSET_PX = -2;
+const LABEL_CLEARANCE_PX = 12;
+const LABEL_FADE_DISTANCE_PX = 32;
 // Simulated ticket-creation time — the thumb shows a spinner for this long
 // after a completed swipe, then onConfirm fires the success flow.
 const CONFIRM_LOADER_MS = 900;
@@ -50,7 +54,36 @@ export function SwipeToConfirm({
   const swipeFill = useTransform(swipeX, (v) => `${50 + v}px`);
   const trackRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLButtonElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [labelMetrics, setLabelMetrics] = useState({ trackWidth: 0, labelWidth: 0 });
   const [confirming, setConfirming] = useState(false);
+
+  // The remaining space's center advances by half the thumb's travel. Fade
+  // before that space gets tight rather than letting text collide or wrap.
+  const labelX = useTransform(swipeX, (x) =>
+    Math.max(0, Math.min(x, labelMetrics.trackWidth - THUMB_WIDTH_PX - THUMB_INSET_PX * 2)) / 2
+      + LABEL_OPTICAL_OFFSET_PX);
+  const labelOpacity = useTransform(swipeX, (x) => {
+    const available = labelMetrics.trackWidth - THUMB_WIDTH_PX - THUMB_INSET_PX * 2 - Math.max(0, x);
+    return Math.max(0, Math.min(1, (available - labelMetrics.labelWidth - LABEL_CLEARANCE_PX * 2) / LABEL_FADE_DISTANCE_PX));
+  });
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    const label = labelRef.current;
+    if (!track || !label) return;
+    const measure = () => {
+      const trackWidth = track.clientWidth;
+      const labelWidth = label.offsetWidth;
+      setLabelMetrics((previous) => previous.trackWidth === trackWidth && previous.labelWidth === labelWidth
+        ? previous : { trackWidth, labelWidth });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    observer.observe(label);
+    return () => observer.disconnect();
+  }, []);
 
   // Thumb/fill are inset 2px top+bottom inside the track.
   const inner = heightPx - 4;
@@ -129,14 +162,15 @@ export function SwipeToConfirm({
           />
         )}
       </motion.button>
-      {/* Center in the resting space after the thumb; keep this fixed during
-          dragging/loading so the label never jumps or follows the thumb. */}
-      <p
+      {/* Visually balance the label in the visible space ahead of the thumb.
+          Keep the spinner clear once confirmation starts. */}
+      <motion.p
         className="pointer-events-none absolute inset-y-0 flex items-center justify-center text-center text-[13px] font-medium leading-4 text-[rgba(251,251,251,0.7)]"
-        style={{ left: THUMB_INSET_PX + THUMB_WIDTH_PX, right: THUMB_INSET_PX }}
+        style={{ left: THUMB_INSET_PX + THUMB_WIDTH_PX, right: THUMB_INSET_PX,
+          x: labelX, opacity: confirming ? 0 : labelOpacity }}
       >
-        Desliza para jugar por: ${stake}
-      </p>
+        <span ref={labelRef} className="shrink-0 whitespace-nowrap">Desliza para jugar por: ${stake}</span>
+      </motion.p>
     </div>
   );
 }
