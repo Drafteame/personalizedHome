@@ -16,6 +16,8 @@ import { SelectionGroups } from './SelectionGroups';
 import type { ActivePromo, Selection } from './types';
 import boosterIllustration from './assets/booster.png';
 import freeBetIllustration from './assets/apuestaGratis.png';
+import rescateIllustration from './assets/rescateWings.png';
+import rescateBadge from './assets/rescateBadge.png';
 import { formatPromoAmount, promoConfig, promoValues } from './promoConfig';
 
 /**
@@ -125,6 +127,8 @@ function TicketOutline({ notchY, promo }: { notchY: number; promo: ActivePromo }
   }, []);
 
   const { w, h } = size;
+  const borderTheme = promo === 'booster' || promo === 'freebet' ? promoConfig[promo] : null;
+  const borderAlpha = promo === 'rescate' ? 0.24 : STROKE_BASE_ALPHA;
   const p = STROKE_INSET;
   const r = TICKET_CORNER;
   const nd = NOTCH_DEPTH;
@@ -167,10 +171,10 @@ function TicketOutline({ notchY, promo }: { notchY: number; promo: ActivePromo }
           preserveAspectRatio="none"
         >
           <defs>
-            {promo && <>
-              <linearGradient id="promoTicketBorder" x1="0" y1="0.5" x2="1" y2="0.5" gradientTransform={promoConfig[promo].paintTransform}>
-                <stop stopColor={promoConfig[promo].colors[0]} />
-                <stop offset="1" stopColor={promoConfig[promo].colors[1]} />
+            {borderTheme && <>
+              <linearGradient id="promoTicketBorder" x1="0" y1="0.5" x2="1" y2="0.5" gradientTransform={borderTheme.paintTransform}>
+                <stop stopColor={borderTheme.colors[0]} />
+                <stop offset="1" stopColor={borderTheme.colors[1]} />
               </linearGradient>
               <linearGradient id="promoTicketFade" x1="0" y1="0" x2="0" y2="1">
                 <stop stopColor="white" />
@@ -187,19 +191,19 @@ function TicketOutline({ notchY, promo }: { notchY: number; promo: ActivePromo }
               x2={0}
               y2={h}
             >
-              <stop offset="0" stopColor="#fbfbfb" stopOpacity={STROKE_BASE_ALPHA} />
+              <stop offset="0" stopColor="#fbfbfb" stopOpacity={borderAlpha} />
               <stop
                 offset={fadeStart}
                 stopColor="#fbfbfb"
-                stopOpacity={STROKE_BASE_ALPHA}
+                stopOpacity={borderAlpha}
               />
               <stop offset="1" stopColor="#fbfbfb" stopOpacity={0} />
             </linearGradient>
           </defs>
           <path
             d={d}
-            stroke={promo ? 'url(#promoTicketBorder)' : 'url(#ticketBorderFade)'}
-            mask={promo ? 'url(#promoTicketMask)' : undefined}
+            stroke={borderTheme ? 'url(#promoTicketBorder)' : 'url(#ticketBorderFade)'}
+            mask={borderTheme ? 'url(#promoTicketMask)' : undefined}
             strokeWidth={STROKE_WIDTH}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
@@ -512,6 +516,7 @@ export function SuccessEntrySheet({
                   <p className="text-[18px] font-black italic leading-[27px] text-[#fbfbfb]">
                     ¡ENTRADA CREADA!
                   </p>
+                  {promo === 'rescate' && <img src={rescateBadge} alt="Rescate" className="h-[18px] w-[92px] object-contain" />}
                   <div className="flex items-center gap-1">
                     <span className="text-[16px] font-bold leading-6 text-[#fbfbfb]">
                       $
@@ -528,8 +533,8 @@ export function SuccessEntrySheet({
                     {promo === 'booster' ? <span className="flex flex-wrap items-baseline gap-0.5"><span className="rounded-[6px] px-1 text-[12px] font-bold leading-[20px] text-black" style={{ backgroundImage: promoConfig.booster.successBadgeBackground }}>Booster 20%</span><span className="bg-clip-text text-[14px] font-black text-transparent" style={{ backgroundImage: promoConfig.booster.successBadgeBackground }}>{fmtOdds(values.odds)}</span><span className="text-[12px] text-[rgba(251,251,251,0.32)] line-through">{fmtOdds(cumulativeOdds)}</span></span> : <span className="whitespace-nowrap">Momio: {fmtOdds(cumulativeOdds)}</span>}
                   </div>
                 </div>
-                {promo ? <div className="relative size-14 shrink-0 self-start mt-2" aria-hidden>
-                  <img src={promo === 'booster' ? boosterIllustration : freeBetIllustration} alt="" className={promo === 'booster' ? 'absolute inset-[-19.38%_-18.91%_-16.83%_-17.3%] h-[136.21%] w-[136.21%] max-w-none rotate-12 object-contain' : 'size-full object-contain'} />
+                {promo ? <div className={`relative shrink-0 self-start mt-2 ${promo === 'rescate' ? 'size-[84px]' : 'size-14'}`} aria-hidden>
+                  <img src={promo === 'booster' ? boosterIllustration : promo === 'rescate' ? rescateIllustration : freeBetIllustration} alt="" className={promo === 'booster' ? 'absolute inset-[-19.38%_-18.91%_-16.83%_-17.3%] h-[136.21%] w-[136.21%] max-w-none rotate-12 object-contain' : 'size-full object-contain'} />
                 </div> : <img
                   src={successIllustration}
                   alt=""
