@@ -332,7 +332,6 @@ export function ButtonPreviewMomios({
   // EXPLORATION — orbital border-light sweep removed. The shell's
   // outline glow is now a layered box-shadow stack driven by the same
   // logic as the odds text-shadow (see borderBoxShadow above).
-  const sweepPhaseRef = useRef(0); // retained only for debug-overlay shape
 
   /* =============================================================== */
   /*  AMBIENT — sparkle edge flashes (T1+, density scales with tier) */
@@ -1088,7 +1087,6 @@ export function ButtonPreviewMomios({
   /*  RENDER                                                         */
   /* =============================================================== */
   const isUpCross = crossing?.dir === 'up';
-  const isDownCross = crossing?.dir === 'down';
 
   return (
     <div className="relative w-full px-4 pb-2 pt-2">

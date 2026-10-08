@@ -1,3 +1,12 @@
+## personalizedHome exploration (2026-10-08)
+
+- Independent public repository: `Drafteame/personalizedHome`; source history retained from `Drafteame/success-floating-card` as `upstream`. Push only to `origin`.
+- Dev route: `http://localhost:5174/personalizedHome/`. Vite retains a repository subpath, now `/personalizedHome/`.
+- `HomeScreen.tsx` lifts league selection to `HomeScreenChrome`. `Para ti` uses the supplied `assets/paraTiIcon.png` and renders `PersonalizedFeed`: Champions and Premier, each with a `FeaturedMatch` and the existing `PromoCarousel` of other matches.
+- `PickButton` and `PlayerProfile` are extracted from the existing match/player implementation and shared. `FeaturedMatch` composes those with local markets and horizontally scrolling players. Player/team placeholders remain `player.svg` / `shield.svg`; two small stat SVGs come from the reference Figma node. Styling lives in the personalized feed section of `index.css`.
+- Added picks stay in `MOCK_PICKS` so App's selection, long-press, grouping and slip flows work unchanged. Original feeds filter the new player picks and keep their original four-match carousel. Player lines include the threshold in slip copy.
+- Inherited typecheck errors corrected with numeric MotionValue types, explicit promise callbacks, union narrowing and removal of unused declarations; no effects were retuned.
+
 # CLAUDE.md — One Click Bet
 
 Project memory for any Claude session opened in this repo. Read first; **keep this file updated in the same commit as any change that meaningfully shifts architecture, conventions, branch model, or "where things live."**

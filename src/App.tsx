@@ -151,16 +151,11 @@ export function App() {
   );
   const [summaryOddsChangeChecked, setSummaryOddsChangeChecked] = useState(false);
   const [speedScale, setSpeedScale] = useState(1);
-  const [live, setLive] = useState<ButtonLiveState | null>(null);
+  const [live] = useState<ButtonLiveState | null>(null);
   // PASS 3 — Tier 3 odds effect selector (default flames; toggled in debug).
   const [tier3OddsEffect, setTier3OddsEffect] = useState<
     'flames' | 'smoke'
   >(buttonProgressionConfig.tier3OddsEffect);
-  // PASS 3 — "Bouncy entry only on FIRST mount per session". Once the bet
-  // slip has mounted (and started its bounce) once, this flips to true and
-  // subsequent 0 → 1 transitions skip the bounce.
-  const hasBouncedOnceRef = useRef(false);
-
   // Bet-slip view state. On any NEW selection the sheet expands; swiping it
   // down (or 4s of inactivity) morphs it back to the collapsed pill; tapping
   // the collapsed pill re-expands.
@@ -234,10 +229,6 @@ export function App() {
     return () => clearTimeout(t);
   }, [expanded, selections.length, keepAliveNonce]);
 
-  const selectedIds = useMemo(
-    () => new Set(selections.map((s) => s.id)),
-    [selections],
-  );
   const cumulativeOdds = useMemo(
     () => computeCumulativeOdds(selections),
     [selections],

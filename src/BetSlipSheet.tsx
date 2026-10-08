@@ -217,7 +217,7 @@ export function BetSlipSheet({
     const a1 = animate(y, 260, { duration: 0.25, ease: [0.7, 0, 0.84, 0] });
     const a2 = animate(opacity, 0, { duration: 0.2 });
     let done = false;
-    Promise.all([a1.then(), a2.then()]).then(() => {
+    Promise.all([a1.then(() => undefined), a2.then(() => undefined)]).then(() => {
       if (done) return;
       done = true;
       safeToRemove?.();

@@ -1,3 +1,26 @@
+# personalizedHome — Para ti
+
+Product prototype based on [success-floating-card](https://github.com/Drafteame/success-floating-card), preserving its Git history. Select **Para ti** in the league navigation to see Champions and Premier sections with featured match markets, player carousels and other featured matches. All offer data is local mock data; images reuse the original player/team placeholders.
+
+```sh
+npm ci
+npm run dev
+```
+
+Open http://localhost:5174/personalizedHome/. Checks: `npm run typecheck` and `npm run build`.
+
+The Figma references are [featured match](https://www.figma.com/design/IKceqMSPqk0wv7k63kH0ep/Home-personalizado?node-id=2591-294073) and [league section](https://www.figma.com/design/IKceqMSPqk0wv7k63kH0ep/Home-personalizado?node-id=2591-294067). At a 375px viewport, the primary card is 351px wide. Existing navigation and slip interactions are retained. Secondary cards reuse the source MatchCard layout.
+
+Validation completed: `npm run typecheck`, `npm run build`, and `git diff --check` pass. Browser verification used the dev server and the production preview at 375×900 and 320×800, plus the desktop phone frame. The primary measures 351×411 at 375px (the reference is approximately 351×410); secondary cards measure 350×150; player placeholders measure 56×56. Tab switching, selected picks, player-line copy in the slip, match pagination, player dragging and asset loading were checked. At 320px there is no page-level horizontal overflow.
+
+Changed files: `src/HomeScreen.tsx`, `src/index.css`, `src/assets/paraTiIcon.png`, `src/assets/featured-corner.svg`, `src/assets/featured-red-card.svg`; project naming/route in `package.json`, `package-lock.json`, `index.html`, `vite.config.ts`; minimal inherited type fixes in `src/App.tsx`, `src/BetSlipSheet.tsx`, `src/BetSlipShell.tsx`, `src/ButtonPreviewMomios.tsx`; documentation in `README.md` and `CLAUDE.md`. The dev server restarted when the Vite base changed.
+
+Limitations: all data and wagers are simulated; the source's original league tabs continue to share its mock offer. Figma team/player imagery is deliberately replaced by the original source placeholders. No new dependencies or backend services were added.
+
+The original project documentation follows for inherited prototype behavior.
+
+---
+
 # One Click Bet
 
 > **Exploration base.** This repo is a fork of [`Drafteame/draftea-momios-prototype`](https://github.com/Drafteame/draftea-momios-prototype) — the buttonPreviewMomios progressive-engagement prototype — used as a starting point for new "One Click Bet" explorations. The original is left untouched; iterate here.

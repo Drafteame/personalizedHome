@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import betsIcon from './assets/bets.svg';
 import chevronIcon from './assets/chevron.svg';
@@ -13,6 +12,11 @@ import searchIcon from './assets/search.svg';
 import shieldIcon from './assets/shield.svg';
 import statsIcon from './assets/stats.svg';
 import userIcon from './assets/user.svg';
+import redCardIcon from './assets/featured-red-card.svg';
+import cornerIcon from './assets/featured-corner.svg';
+import rightChevronIcon from './assets/chevron_right.svg';
+import paraTiIcon from './assets/paraTiIcon.png';
+import { useHorizontalDragScroll } from './useHorizontalDragScroll';
 import type { Selection } from './types';
 
 /* ============================================================ */
@@ -47,6 +51,12 @@ export const MATCHES: MatchInfo[] = [
   { matchId: 'ars-rma', league: 'Champions', homeName: 'Arsenal', awayName: 'Real Madrid', homeAbbrev: 'ARS', awayAbbrev: 'RMA', matchTime: 'Hoy 20:00' },
   { matchId: 'fcb-psg', league: 'Champions', homeName: 'Barcelona', awayName: 'Paris-Saint Germain', homeAbbrev: 'FCB', awayAbbrev: 'PSG', matchTime: 'Mañana 21:00' },
   { matchId: 'liv-mci', league: 'Premier', homeName: 'Liverpool', awayName: 'Manchester City', homeAbbrev: 'LIV', awayAbbrev: 'MCI', matchTime: 'Mañana 14:00' },
+];
+
+const PREMIER_MATCHES: MatchInfo[] = [
+  MATCHES[3],
+  { matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
+  { matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
 ];
 
 // Only the match fields carried by each Selection (league/full names live in MATCHES).
@@ -96,6 +106,30 @@ export const MOCK_PICKS: Selection[] = [
   { id: 'mci-haaland', market: GOALS_MARKET, pick: 'Haaland', odds: 1.7, ...M_LIV_MCI },
   { id: 'mci-haaland-tiros', market: SHOTS_MARKET, pick: 'Haaland', odds: 1.6, ...M_LIV_MCI },
 ];
+
+// Personalized markets share App's selection registry and match metadata.
+MOCK_PICKS.push(...PREMIER_MATCHES.slice(1).flatMap((m) =>
+  [m.homeName, 'Empate', m.awayName].map((pick, i) => ({
+    id: `featured-${m.matchId}-${i}`, market: 'Money line', pick,
+    odds: [1.75, 3.8, 2.75][i], ...matchOf(m),
+  })),
+));
+const FEATURED_MATCHES = [MATCHES[0], PREMIER_MATCHES[0]];
+for (const m of FEATURED_MATCHES) {
+  for (const market of ['Corners totales', 'Goles totales']) {
+    for (const direction of ['↑', '↓']) MOCK_PICKS.push({
+      id: `featured-${m.matchId}-${market}-${direction}`, market,
+      pick: `${direction === '↑' ? 'Más' : 'Menos'} de ${market === 'Corners totales' ? '9.5' : '2.5'}`,
+      odds: 1.75, ...matchOf(m),
+    });
+  }
+  for (const player of (m.league === 'Champions' ? ['Mbappé', 'Vinicius', 'Lewandowski'] : ['Salah', 'Haaland', 'Foden'])) {
+    for (const line of [1, 2, 3]) MOCK_PICKS.push({
+      id: `featured-${m.matchId}-${player}-${line}`, market: SHOTS_MARKET,
+      pick: `${player} · ${line}.0+`, odds: 1.53, ...matchOf(m),
+    });
+  }
+}
 
 /* ============================================================ */
 /*  Header — Draftea logo, balance, lightning, profile          */
@@ -192,9 +226,9 @@ function Header() {
 /*  Bottom border on the row + right-edge fade-to-black gradient.*/
 /*  Icons reuse the existing emoji glyphs.                       */
 /* ============================================================ */
-function LeaguesTab() {
-  const [activeLeague, setActiveLeague] = useState<string>('todofut');
+function LeaguesTab({ activeLeague, onChange }: { activeLeague: string; onChange: (id: string) => void }) {
   const leagues = [
+    { id: 'parati', label: 'Para ti', glyph: '' },
     { id: 'todofut', label: 'TODO FUT', glyph: '⚽' },
     { id: 'champ', label: 'CHAMPIONS', glyph: '🏆' },
     { id: 'nfl', label: 'NFL', glyph: '🏈' },
@@ -211,7 +245,8 @@ function LeaguesTab() {
             <button
               key={l.id}
               type="button"
-              onClick={() => setActiveLeague(l.id)}
+              onClick={() => onChange(l.id)}
+              aria-pressed={isActive}
               className="flex h-[70px] shrink-0 cursor-pointer flex-col items-center active:scale-[0.96] transition-transform"
             >
               <div className="flex flex-col items-center gap-1">
@@ -230,7 +265,7 @@ function LeaguesTab() {
                       : undefined
                   }
                 >
-                  {l.glyph}
+                  {l.id === 'parati' ? <img src={paraTiIcon} alt="" className="size-6 object-contain" /> : l.glyph}
                 </div>
                 <span
                   className={`w-[52px] overflow-hidden text-ellipsis whitespace-nowrap text-center text-[10px] font-bold leading-[15px] ${
@@ -279,7 +314,7 @@ function MatchTabsRow() {
     <div className="flex w-full flex-col items-start px-3">
       <div className="no-scrollbar flex w-full items-center gap-3 overflow-x-auto pb-1 pr-3 pt-2">
         {matchTabs.map((t) => {
-          const isTodos = t.id === 'todos';
+          const isTodos = !('home' in t);
           const isActive = activeMatch === t.id;
           if (isTodos) {
             return (
@@ -406,6 +441,7 @@ function useLongPress(
 ) {
   const timer = useRef<number | null>(null);
   const fired = useRef(false);
+  useEffect(() => () => { if (timer.current != null) clearTimeout(timer.current); }, []);
   const clear = () => {
     if (timer.current != null) {
       clearTimeout(timer.current);
@@ -443,16 +479,48 @@ type PromoCarouselProps = {
 
 type BindPick = (id: string) => Record<string, unknown>;
 
+function PickButton({ p, label, selected, bindPick }: { p: Selection; label: string; selected: boolean; bindPick: BindPick }) {
+  return (
+    <button
+      type="button"
+      {...bindPick(p.id)}
+      aria-pressed={selected}
+      className={`flex h-11 min-w-[58px] flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border px-3 py-1 transition-all duration-200 active:scale-[0.96] ${
+        selected
+          ? 'border-[#d2ff72] bg-gradient-to-b from-[rgba(210,255,114,0.16)] to-[rgba(86,222,234,0.16)]'
+          : 'border-[rgba(251,251,251,0.08)] bg-[rgba(251,251,251,0.1)] hover:bg-[rgba(251,251,251,0.14)]'
+      }`}
+    >
+      <span
+        className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[10px] font-medium leading-[15px] text-[rgba(251,251,251,0.5)]"
+        style={{ fontFamily: 'Red Hat Display, sans-serif' }}
+      >
+        {label}
+      </span>
+      <span
+        className={`whitespace-nowrap text-center text-[13px] leading-4 text-[#fbfbfb] ${
+          selected ? 'font-bold' : 'font-medium'
+        }`}
+        style={{ fontFamily: 'Red Hat Display, sans-serif' }}
+      >
+        {p.odds.toFixed(2)}x
+      </span>
+    </button>
+  );
+}
+
 /** One match card (Figma "newLeagueMarkets" 1624:44632) — league + tags,
     the two teams + kickoff, and the money-line 3-way as odds buttons. */
 function MatchCard({
   match,
   selectedIds,
   bindPick,
+  featuredLayout = false,
 }: {
   match: MatchInfo;
   selectedIds: Set<string>;
   bindPick: BindPick;
+  featuredLayout?: boolean;
 }) {
   // Money-line picks for THIS match, in [home, draw, away] order.
   const lines = MOCK_PICKS.filter(
@@ -467,12 +535,7 @@ function MatchCard({
         ? match.homeAbbrev
         : match.awayAbbrev;
 
-  return (
-    <div
-      className="relative w-full overflow-hidden rounded-[20px] border border-[rgba(251,251,251,0.24)] bg-black pt-2"
-      style={{ backdropFilter: 'blur(10.15px)', WebkitBackdropFilter: 'blur(10.15px)' }}
-    >
-      {/* League + tags row */}
+  const leagueTags = (
       <div className="flex w-full items-center justify-center gap-1 px-2.5">
         <div className="flex items-center gap-1">
           <p
@@ -501,11 +564,20 @@ function MatchCard({
           </span>
         </div>
       </div>
+  );
+
+  return (
+    <div
+      className={`relative w-full ${featuredLayout ? 'personalized-match-card' : ''} overflow-hidden rounded-[20px] border border-[rgba(251,251,251,0.24)] bg-black pt-2`}
+      style={{ backdropFilter: 'blur(10.15px)', WebkitBackdropFilter: 'blur(10.15px)' }}
+    >
+      {/* League + tags row */}
+      {!featuredLayout && leagueTags}
 
       {/* Match row — Team 1 / center kickoff / Team 2 */}
       <div className="flex w-full items-start gap-2 px-2.5 pb-2">
         <div className="flex flex-1 flex-col items-center gap-0.5">
-          <img src={shieldIcon} alt="" aria-hidden className="h-8 w-8" />
+          <img src={shieldIcon} alt="" aria-hidden className={featuredLayout ? 'size-11' : 'size-8'} />
           <p
             className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]"
             style={{ fontFamily: 'Red Hat Display, sans-serif' }}
@@ -513,7 +585,8 @@ function MatchCard({
             {match.homeName}
           </p>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center self-stretch">
+        <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 self-stretch">
+          {featuredLayout && leagueTags}
           <p
             className="whitespace-nowrap text-[12px] font-bold leading-[18px] text-[#fbfbfb]"
             style={{ fontFamily: 'Red Hat Display, sans-serif' }}
@@ -522,7 +595,7 @@ function MatchCard({
           </p>
         </div>
         <div className="flex flex-1 flex-col items-center justify-end gap-0.5">
-          <img src={shieldIcon} alt="" aria-hidden className="h-8 w-8" />
+          <img src={shieldIcon} alt="" aria-hidden className={featuredLayout ? 'size-11' : 'size-8'} />
           <p
             className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[12px] font-medium leading-4 text-[rgba(251,251,251,0.7)]"
             style={{ fontFamily: 'Red Hat Display, sans-serif' }}
@@ -538,31 +611,7 @@ function MatchCard({
         {lines.map((p, i) => {
           const selected = selectedIds.has(p.id);
           return (
-            <button
-              key={p.id}
-              type="button"
-              {...bindPick(p.id)}
-              className={`flex h-11 min-w-[58px] flex-1 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border px-3 py-1 transition-all duration-200 active:scale-[0.96] ${
-                selected
-                  ? 'border-[#d2ff72] bg-gradient-to-b from-[rgba(210,255,114,0.16)] to-[rgba(86,222,234,0.16)]'
-                  : 'border-[rgba(251,251,251,0.08)] bg-[rgba(251,251,251,0.1)] hover:bg-[rgba(251,251,251,0.14)]'
-              }`}
-            >
-              <span
-                className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-center text-[10px] font-medium leading-[15px] text-[rgba(251,251,251,0.5)]"
-                style={{ fontFamily: 'Red Hat Display, sans-serif' }}
-              >
-                {labelFor(p, i)}
-              </span>
-              <span
-                className={`whitespace-nowrap text-center text-[13px] leading-4 text-[#fbfbfb] ${
-                  selected ? 'font-bold' : 'font-medium'
-                }`}
-                style={{ fontFamily: 'Red Hat Display, sans-serif' }}
-              >
-                {p.odds.toFixed(2)}x
-              </span>
-            </button>
+            <PickButton key={p.id} p={p} label={labelFor(p, i)} selected={selected} bindPick={bindPick} />
           );
         })}
       </div>
@@ -574,13 +623,16 @@ function PromoCarousel({
   selectedIds,
   onTogglePick,
   onLightningBet,
-}: PromoCarouselProps) {
+  matches = MATCHES.slice(0, 4),
+  featuredLayout = false,
+}: PromoCarouselProps & { matches?: MatchInfo[]; featuredLayout?: boolean }) {
   const bindPick = useLongPress(onLightningBet, onTogglePick);
   // Horizontal scroll-snap carousel over every match on the feed. Cards
   // snap-CENTER, so an intermediate card rests centered in the carousel (the
   // first/last rest at the edges, held there by the scroll bounds). The active
   // dot tracks whichever card's center is nearest the carousel's center —
   // measured from live rects so it stays correct for center snapping.
+  const dragScroll = useHorizontalDragScroll();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const onScroll = () => {
@@ -598,21 +650,23 @@ function PromoCarousel({
         best = i;
       }
     });
-    setActive(Math.max(0, Math.min(MATCHES.length - 1, best)));
+    setActive(Math.max(0, Math.min(matches.length - 1, best)));
   };
 
   return (
     // pt-3 = 12px gap from the pills row above (per design spec).
     <div className="w-full pb-2 pt-3">
       <div
+        {...dragScroll}
         ref={scrollRef}
         onScroll={onScroll}
         className="no-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto px-3"
       >
-        {MATCHES.map((m) => (
+        {matches.map((m) => (
           <div key={m.matchId} className="w-[86%] shrink-0 snap-center">
             <MatchCard
               match={m}
+              featuredLayout={featuredLayout}
               selectedIds={selectedIds}
               bindPick={bindPick}
             />
@@ -622,8 +676,12 @@ function PromoCarousel({
 
       {/* Carousel dots — one per match, active dot widens. */}
       <div className="mt-2 flex justify-center gap-1.5">
-        {MATCHES.map((m, i) => (
-          <div
+        {matches.map((m, i) => (
+          <button
+            type="button"
+            aria-label={`Ver partido ${i + 1}`}
+            aria-pressed={i === active}
+            onClick={() => { const el = scrollRef.current; const card = el?.children[i] as HTMLElement | undefined; if (el && card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft - (el.clientWidth - card.clientWidth) / 2, behavior: 'smooth' }); }}
             key={m.matchId}
             className={`h-1.5 rounded-full transition-all duration-200 ${
               i === active ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
@@ -633,6 +691,75 @@ function PromoCarousel({
       </div>
     </div>
   );
+}
+
+function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchInfo }) {
+  const bindPick = useLongPress(props.onLightningBet, props.onTogglePick);
+  const dragScroll = useHorizontalDragScroll();
+  const picks = MOCK_PICKS.filter(p => p.matchId === match.matchId);
+  const players = [...new Set(picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET).map(p => p.pick.split(' · ')[0]))];
+  const renderPick = (p: Selection, label: string) => <PickButton key={p.id} p={p} label={label} selected={props.selectedIds.has(p.id)} bindPick={bindPick} />;
+  return (
+    <article className="featured-match" aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
+      <div aria-hidden className="featured-glow" />
+      <div className="featured-header">
+        {[match.homeName, match.awayName].map((name, i) => (
+          <div className={`featured-team featured-team-${i}`} key={name}>
+            <img src={shieldIcon} alt="" className="size-[42px]" />
+            <span className="w-full truncate text-center text-xs leading-[18px] text-white/70">{name}</span>
+            <div className="flex items-center gap-1.5 text-xs leading-[18px] text-white/50">
+              <span className="flex items-center gap-0.5"><img src={redCardIcon} alt="Tarjetas rojas" />{i ? 1 : 2}</span>
+              <span className="flex items-center gap-0.5"><img src={cornerIcon} alt="Corners" />{i ? 7 : 4}</span>
+            </div>
+          </div>
+        ))}
+        <div className="featured-score">
+          <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
+          <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />{match.matchTime.split(' ').slice(-1)[0]}</span>
+        </div>
+      </div>
+      <div className="featured-body">
+        <div className="featured-markets">
+          <div>
+            <div className="featured-market-title">Ganador <span className="featured-badge">90’</span></div>
+            <div className="flex gap-1">{picks.filter(p => p.market === 'Money line').map((p, i) => renderPick(p, i === 1 ? 'EMPATE' : i === 0 ? match.homeAbbrev : match.awayAbbrev))}</div>
+          </div>
+          <div className="flex gap-2.5">
+            {['Corners totales', 'Goles totales'].map(market => <div className="min-w-0 flex-1" key={market}>
+              <div className="featured-market-title">{market}</div>
+              <div className="flex gap-1">{picks.filter(p => p.market === market).map((p, i) => renderPick(p, `${i ? '↓' : '↑'} ${market === 'Corners totales' ? '9.5' : '2.5'}`))}</div>
+            </div>)}
+          </div>
+        </div>
+        <div {...dragScroll} className="featured-players no-scrollbar" role="region" aria-label="Jugadores destacados" tabIndex={0}>
+          {players.map(name => {
+            const lines = picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET && p.pick.startsWith(`${name} · `));
+            return <div className="featured-player" key={name}>
+              <span className="absolute right-0 top-0 text-[10px] leading-[15px] text-white/50">{name === 'Vinicius' || name === 'Haaland' || name === 'Foden' ? match.awayAbbrev : match.homeAbbrev}</span>
+              <PlayerProfile p={{ ...lines[0], pick: name }} compact />
+              <div className="featured-market-title">Tiros al arco <span className="featured-badge italic">B+</span></div>
+              <div className="featured-player-odds no-scrollbar" tabIndex={0} aria-label={`Líneas de ${name}`}>{lines.map((p, i) => renderPick(p, `${i + 1}.0+`))}</div>
+            </div>;
+          })}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PersonalizedFeed(props: PromoCarouselProps) {
+  const sections = [
+    { title: 'Champions', matches: MATCHES.slice(0, 3) },
+    { title: 'Premier', matches: PREMIER_MATCHES },
+  ];
+  return <div className="personalized-feed">
+    {sections.map(({title, matches}) => <section key={title} aria-label={title}>
+      <h2 className="flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
+      <FeaturedMatch match={matches[0]} {...props} />
+      <p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
+      <PromoCarousel matches={matches.slice(1)} featuredLayout {...props} />
+    </section>)}
+  </div>;
 }
 
 /* ============================================================ */
@@ -667,6 +794,40 @@ const PLAYER_POSITION: Record<string, string> = {
 function splitKickoff(matchTime: string): { date: string; time: string } {
   const [date, ...rest] = matchTime.split(' ');
   return { date: date.toUpperCase(), time: rest.join(' ') };
+}
+
+function PlayerProfile({ p, compact = false }: { p: Selection; compact?: boolean }) {
+  const position = PLAYER_POSITION[p.pick] ?? 'DEL';
+  return (
+    <div className="relative flex w-full flex-col items-center ">
+      <img
+        src={playerIcon}
+        alt=""
+        aria-hidden
+        className="relative z-0"
+        width={compact ? 56 : 76}
+        height={compact ? 56 : 76}
+      />
+      {/* Fade — 60px tall, ~140px wide, anchored to the
+          bottom of the player container. Starts halfway
+          down the silhouette, ends just past the name. */}
+      <div
+        className={`pointer-events-none absolute bottom-0 left-1/2 z-[1] ${compact ? 'h-[32px]' : 'h-[60px]'} w-[140px] -translate-x-1/2 bg-gradient-to-b from-transparent to-black`}
+        aria-hidden
+      />
+      <div
+        className="relative z-[2] flex items-baseline justify-center gap-0.5"
+        style={{ fontFamily: 'Red Hat Display, sans-serif' }}
+      >
+        <span className="text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
+          {p.pick}
+        </span>
+        <span className="text-[10px] font-medium leading-[15px] text-[rgba(251,251,251,0.44)]">
+          {position}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function MarketAccordion({
@@ -724,7 +885,6 @@ function MarketAccordion({
           <div className="grid grid-cols-2 gap-2">
             {playerPicks.map((p) => {
               const { date, time } = splitKickoff(p.matchTime);
-              const position = PLAYER_POSITION[p.pick] ?? 'DEL';
               const selected = selectedIds.has(p.id);
               return (
                 <button
@@ -784,34 +944,7 @@ function MarketAccordion({
                       silhouette (covering shoulders/chest) and EXTENDS
                       DOWN behind the player name, so the head reads
                       crisp and the name floats over a black wash. */}
-                  <div className="relative flex w-full flex-col items-center pt-2">
-                    <img
-                      src={playerIcon}
-                      alt=""
-                      aria-hidden
-                      className="relative z-0"
-                      width={76}
-                      height={76}
-                    />
-                    {/* Fade — 60px tall, ~140px wide, anchored to the
-                        bottom of the player container. Starts halfway
-                        down the silhouette, ends just past the name. */}
-                    <div
-                      className="pointer-events-none absolute bottom-0 left-1/2 z-[1] h-[60px] w-[140px] -translate-x-1/2 bg-gradient-to-b from-transparent to-black"
-                      aria-hidden
-                    />
-                    <div
-                      className="relative z-[2] flex items-baseline justify-center gap-0.5"
-                      style={{ fontFamily: 'Red Hat Display, sans-serif' }}
-                    >
-                      <span className="text-[14px] font-medium leading-[21px] text-[#fbfbfb]">
-                        {p.pick}
-                      </span>
-                      <span className="text-[10px] font-medium leading-[15px] text-[rgba(251,251,251,0.44)]">
-                        {position}
-                      </span>
-                    </div>
-                  </div>
+                  <PlayerProfile p={p} />
 
                   {/* Odds button at the bottom — same default/selected
                       visual language as the PromoCarousel buttons. */}
@@ -948,7 +1081,7 @@ function Navbar({
                     }`}
                   >
                     <img
-                      src={t.icon}
+                      src={t.icon ?? undefined}
                       alt=""
                       aria-hidden
                       className={t.id === 'rewards' ? 'h-[26px] w-[26px]' : 'h-5 w-5'}
@@ -1028,6 +1161,7 @@ export function HomeScreenChrome({
   onLightningBet,
   headerCollapsed = false,
 }: HomeScreenChromeProps) {
+  const [activeLeague, setActiveLeague] = useState('todofut');
   return (
     <div className="flex w-full flex-col">
       {/* PINNED HEADER — ONE sticky surface holding the logo/balance bar, the
@@ -1068,13 +1202,14 @@ export function HomeScreenChrome({
               headerCollapsed ? 'max-h-0 opacity-0' : 'max-h-[96px] opacity-100'
             }`}
           >
-            <LeaguesTab />
+            <LeaguesTab activeLeague={activeLeague} onChange={setActiveLeague} />
           </div>
-          <MatchTabsRow />
-          <TabsAndPills />
+          <div hidden={activeLeague === 'parati'}><MatchTabsRow /><TabsAndPills /></div>
         </div>
       </div>
 
+      {activeLeague === 'parati' && <PersonalizedFeed selectedIds={selectedIds} onTogglePick={onTogglePick} onLightningBet={onLightningBet} />}
+      <div hidden={activeLeague === 'parati'}>
       <PromoCarousel
         selectedIds={selectedIds}
         onTogglePick={onTogglePick}
@@ -1082,18 +1217,19 @@ export function HomeScreenChrome({
       />
       <MarketAccordion
         title={GOALS_MARKET}
-        picks={picks}
+        picks={picks.filter(p => !p.id.startsWith('featured-'))}
         selectedIds={selectedIds}
         onTogglePick={onTogglePick}
         onLightningBet={onLightningBet}
       />
       <MarketAccordion
         title={SHOTS_MARKET}
-        picks={picks}
+        picks={picks.filter(p => !p.id.startsWith('featured-'))}
         selectedIds={selectedIds}
         onTogglePick={onTogglePick}
         onLightningBet={onLightningBet}
       />
+      </div>
     </div>
   );
 }
