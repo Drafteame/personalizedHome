@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useFeaturedMatchSequence, FeaturedMatchParticles, FeaturedBetCount } from './FeaturedMatchMotion';
+import { buttonProgressionConfig } from './buttonProgressionConfig';
 import betsIcon from './assets/bets.svg';
 import chevronIcon from './assets/chevron.svg';
 import gamingIcon from './assets/gaming.svg';
@@ -44,19 +47,20 @@ export type MatchInfo = {
   homeAbbrev: string;
   awayAbbrev: string;
   matchTime: string;
+  betCount: number;
 };
 
 export const MATCHES: MatchInfo[] = [
-  { matchId: 'psg-rma', league: 'Champions', homeName: 'Paris-Saint Germain', awayName: 'Real Madrid', homeAbbrev: 'PSG', awayAbbrev: 'RMA', matchTime: 'Hoy 18:00' },
-  { matchId: 'ars-rma', league: 'Champions', homeName: 'Arsenal', awayName: 'Real Madrid', homeAbbrev: 'ARS', awayAbbrev: 'RMA', matchTime: 'Hoy 20:00' },
-  { matchId: 'fcb-psg', league: 'Champions', homeName: 'Barcelona', awayName: 'Paris-Saint Germain', homeAbbrev: 'FCB', awayAbbrev: 'PSG', matchTime: 'Mañana 21:00' },
-  { matchId: 'liv-mci', league: 'Premier', homeName: 'Liverpool', awayName: 'Manchester City', homeAbbrev: 'LIV', awayAbbrev: 'MCI', matchTime: 'Mañana 14:00' },
+  { betCount: 12000, matchId: 'psg-rma', league: 'Champions', homeName: 'Paris-Saint Germain', awayName: 'Real Madrid', homeAbbrev: 'PSG', awayAbbrev: 'RMA', matchTime: 'Hoy 18:00' },
+  { betCount: 8600, matchId: 'ars-rma', league: 'Champions', homeName: 'Arsenal', awayName: 'Real Madrid', homeAbbrev: 'ARS', awayAbbrev: 'RMA', matchTime: 'Hoy 20:00' },
+  { betCount: 9400, matchId: 'fcb-psg', league: 'Champions', homeName: 'Barcelona', awayName: 'Paris-Saint Germain', homeAbbrev: 'FCB', awayAbbrev: 'PSG', matchTime: 'Mañana 21:00' },
+  { betCount: 8200, matchId: 'liv-mci', league: 'Premier', homeName: 'Liverpool', awayName: 'Manchester City', homeAbbrev: 'LIV', awayAbbrev: 'MCI', matchTime: 'Mañana 14:00' },
 ];
 
 const PREMIER_MATCHES: MatchInfo[] = [
   MATCHES[3],
-  { matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
-  { matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
+  { betCount: 6400, matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
+  { betCount: 5100, matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
 ];
 
 // Only the match fields carried by each Selection (league/full names live in MATCHES).
@@ -694,15 +698,19 @@ function PromoCarousel({
 }
 
 function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchInfo }) {
+  const { headerRef, phase } = useFeaturedMatchSequence(match.matchId);
+  const hot = phase === 'flames' || phase === 'entrance';
   const bindPick = useLongPress(props.onLightningBet, props.onTogglePick);
   const dragScroll = useHorizontalDragScroll();
   const picks = MOCK_PICKS.filter(p => p.matchId === match.matchId);
   const players = [...new Set(picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET).map(p => p.pick.split(' · ')[0]))];
   const renderPick = (p: Selection, label: string) => <PickButton key={p.id} p={p} label={label} selected={props.selectedIds.has(p.id)} bindPick={bindPick} />;
   return (
-    <article className="featured-match" aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
+    <motion.article className="featured-match" data-phase={phase} initial={false} animate={{ "--heat": hot ? 1 : 0 }} transition={{ duration: (hot ? buttonProgressionConfig.featuredMatch.activationMs : buttonProgressionConfig.featuredMatch.settleMs) / 1000 }} aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
       <div aria-hidden className="featured-glow" />
-      <div className="featured-header">
+      {phase !== 'default' && phase !== 'settled' && <div aria-hidden className="featured-glow featured-hot-glow" />}
+      <div className="featured-header" ref={headerRef}>
+        <FeaturedMatchParticles phase={phase} />
         {[match.homeName, match.awayName].map((name, i) => (
           <div className={`featured-team featured-team-${i}`} key={name}>
             <img src={shieldIcon} alt="" className="size-[42px]" />
@@ -714,6 +722,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           </div>
         ))}
         <div className="featured-score">
+          <FeaturedBetCount count={match.betCount} phase={phase} />
           <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
           <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />{match.matchTime.split(' ').slice(-1)[0]}</span>
         </div>
@@ -744,7 +753,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           })}
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }
 

@@ -490,3 +490,19 @@ body {
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
 }
+
+/* Decorative crossfade keeps the combined default rim at 40%; black wash is independent. */
+.featured-match { --heat: 0; }
+.featured-glow { opacity: calc(.5 * (1 - var(--heat))); }
+.featured-hot-glow { top: 32px; height: 96px; opacity: calc(.24 * var(--heat)); background: linear-gradient(-77.322deg, #ffa901 9.35%, #ff52ba 94.98%); }
+.featured-decoration::before { opacity: calc(.4 * (1 - var(--heat))); }
+.featured-match[data-phase="flames"] .featured-decoration::after,
+.featured-match[data-phase="entrance"] .featured-decoration::after,
+.featured-match[data-phase="settling"] .featured-decoration::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#ff52ba,#ffa901); opacity: calc(.4 * var(--heat)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.featured-header { position: relative; isolation: isolate; }
+.featured-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.featured-score { position: relative; }
+.featured-bet-count { position: absolute; top: -14px; white-space: nowrap; pointer-events: none; }
+.featured-count-content { display: flex; align-items: center; gap: 2px; font-weight: 900; font-style: italic; line-height: 18px; text-shadow: 0 1px 2px rgba(0,0,0,.46); }
+.featured-count-subtitle { display: block; font-size: 10px; line-height: 12px; overflow: hidden; }
+.featured-count-spark { position: absolute; left: 50%; top: 6px; width: 3px; height: 3px; border-radius: 50%; background: radial-gradient(circle,#fff,#ff52ba 45%,transparent); box-shadow: 0 0 8px #ffa901; }

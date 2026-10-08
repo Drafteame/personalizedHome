@@ -308,3 +308,10 @@ Flip to `true` to restore everything documented above.
 **Swipe visual centering (`swipeTextVisualCentering`)** — supersedes the fixed label position above. The shared label follows half the thumb's travel to stay centered in the remaining track, with a −2px optical offset. Track and single-line text widths are measured via ResizeObserver; opacity fades over the last 32px of usable room before the label reaches its 12px-per-side clearance. The label hides during loading and restores as a partial swipe springs back. Thumb physics, confirmation threshold, 900ms loader, callbacks and accessibility labels are unchanged.
 
 - **Animated ticket rim refinement:** all four dark ticket base SVGs use a 6px centered stroke masked to the original fill path, exposing a 3px inside rim (previously 8px/4px). Resting and flying ticket faces share these assets; geometry, artwork, glow, timing and callbacks are unchanged.
+
+## Para ti · featured-match entrance
+
+- `FeaturedMatchMotion.tsx`: central viewport IntersectionObserver, once per match per page session. 250ms pink/orange decorative crossfade, 1200ms finite translucent supplied-icon flame burst clipped to the header, 600ms count entrance, 300ms settle and default-color restoration.
+- Count adapts confirmation ticket `greenCircleIn`/`greenContentIn` circular reveal + scale pop and its radial shrinking spark choreography, recolored pink/orange. No ticket flight, confirmation copy or looping effects. Fixed Spanish compact counts remain above the score without layout shifts.
+- Temporary layers disappear; default colored glow stays 50%, rim 40% with downward fade, black markets wash 40%, player spacing unchanged. Page-session registry prevents scroll/tab replay; interrupted sequences settle on return. Observer/timers are cleaned up on unmount. Reduced motion displays the settled count immediately.
+- Shared tunables: `buttonProgressionConfig.featuredMatch`, independent of the bet-slip progression master switch. Figma nodes `2519:161561`, `2537:13796`, `2537:18054` supplied visual states but no motion keyframes; timing follows the requested fallback.
