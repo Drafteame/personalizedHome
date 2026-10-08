@@ -57,10 +57,10 @@ export function FeaturedMatchParticles({ phase }: { phase: Phase }) {
   return <div className="featured-particles" aria-hidden>
     {phase === 'flames' ? Array.from({ length: cfg.flameCount }, (_, i) =>
       <motion.img key={`flame-${i}`} src={flameIcon} alt="" draggable={false}
-        style={{ position: 'absolute', left: `${(i + 0.5) * 100 / cfg.flameCount}%`, bottom: 0, width: cfg.flameSizePx, height: cfg.flameSizePx }}
+        style={{ position: 'absolute', left: `${(i + 0.5) * 100 / cfg.flameCount + (i % 3 - 1)}%`, bottom: cfg.flameBottomPx, width: cfg.flameSizePx + (i % 3 - 1) * cfg.flameSizeVariationPx, height: cfg.flameSizePx + (i % 3 - 1) * cfg.flameSizeVariationPx }}
         initial={{ y: 0, opacity: 0, scale: 0.7 }}
-        animate={{ y: -cfg.flameTravelPx, opacity: [0, cfg.flameOpacity, cfg.flameOpacity, 0], scale: [0.7, 1, 0.8] }}
-        transition={{ delay: (cfg.activationMs + i * cfg.flameStaggerMs) / 1000, duration: cfg.flameDurationMs / 1000, ease: 'easeOut', opacity: { times: [0, 0.15, 0.5, 1] } }} />
+        animate={{ x: (i % 3 - 1) * cfg.flameDriftPx, y: -cfg.flameTravelPx, opacity: [0, cfg.flameOpacity, cfg.flameOpacity, 0], scale: [0.7, 1, 0.8] }}
+        transition={{ delay: (cfg.activationMs + i * cfg.flameStaggerMs) / 1000, duration: cfg.flameDurationMs / 1000, ease: 'linear', opacity: { duration: cfg.flameDurationMs / 1000, delay: (cfg.activationMs + i * cfg.flameStaggerMs) / 1000, ease: 'linear', times: [0, 0.15, 0.65, 1] } }} />
     ) : Array.from({ length: cfg.sparkCount }, (_, i) => {
       const angle = i * Math.PI * 2 / cfg.sparkCount;
       // Ticket confirmation's radial launch, opacity envelope and shrinking sparks.
@@ -75,7 +75,7 @@ export function FeaturedMatchParticles({ phase }: { phase: Phase }) {
 export function FeaturedBetCount({ count, phase }: { count: number; phase: Phase }) {
   if (phase === 'default' || phase === 'flames') return null;
   const entering = phase === 'entrance';
-  const label = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 }).format(count);
+  const label = new Intl.NumberFormat('es-MX', { notation: 'compact', maximumFractionDigits: 1 }).format(count).replace(/\s/g, '');
   return <motion.div className="featured-bet-count" aria-label={`${count.toLocaleString('es-MX')} apuestas en juego`}
     initial={entering ? { opacity: 0, scale: cfg.entrance.scale, y: cfg.entrance.y, clipPath: 'circle(12px at 50% 50%)' } : false}
     animate={{ opacity: 1, scale: 1, y: entering ? cfg.entrance.y : 0, clipPath: 'circle(75% at 50% 50%)' }}
@@ -85,7 +85,7 @@ export function FeaturedBetCount({ count, phase }: { count: number; phase: Phase
       transition={{ duration: cfg.entranceMs / 1000, ease: cfg.ease }}>
       <motion.img initial={false} src={flameIcon} alt="" animate={{ width: entering ? 24 : 12, height: entering ? 24 : 12 }} transition={{ duration: cfg.settleMs / 1000 }} />
       <motion.div initial={false} style={{ fontSize: 10 }} animate={{ fontSize: entering ? 12 : 10, color: entering ? '#fbfbfb' : 'rgba(251,251,251,.7)' }} transition={{ duration: cfg.settleMs / 1000 }}>
-        <span>{label.toUpperCase()} APUESTAS</span>
+        <span>{label.toUpperCase()} BETS</span>
         <motion.span initial={false} className="featured-count-subtitle" aria-hidden={!entering} animate={{ opacity: entering ? 1 : 0, height: entering ? 12 : 0 }} transition={{ duration: cfg.settleMs / 1000 }}>EN JUEGO</motion.span>
       </motion.div>
     </motion.div>

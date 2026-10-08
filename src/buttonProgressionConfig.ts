@@ -10,12 +10,13 @@ import type { TierConfig } from './types';
 export const buttonProgressionConfig = {
   // Para ti: independent of the bet-slip progression master switch.
   featuredMatch: {
-    activationMs: 250, flameMs: 1200, entranceMs: 600, settleMs: 300,
+    activationMs: 250, flameMs: 2200, entranceMs: 600, settleMs: 300,
     rootMargin: '-20% 0px -35% 0px', // central viewport band, below sticky navigation
     ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ticket content entrance
     sparkEase: [0.2, 0.7, 0.3, 1] as [number, number, number, number],
-    flameCount: 13, flameSizePx: 16, flameOpacity: 0.29,
-    flameTravelPx: 62, flameDurationMs: 750, flameStaggerMs: 32,
+    flameCount: 13, flameSizePx: 16, flameOpacity: 0.42,
+    flameTravelPx: 52, flameDurationMs: 1400, flameStaggerMs: 60,
+    flameSizeVariationPx: 2, flameDriftPx: 4, flameBottomPx: 4,
     sparkCount: 12, sparkDistancePx: 24, sparkDurationMs: 400,
     entrance: { y: -21, scale: 0.5, rotate: -3.7, scaleX: 1.035, scaleY: 0.965 },
   },

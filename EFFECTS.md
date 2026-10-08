@@ -311,7 +311,12 @@ Flip to `true` to restore everything documented above.
 
 ## Para ti · featured-match entrance
 
-- `FeaturedMatchMotion.tsx`: central viewport IntersectionObserver, once per match per page session. 250ms pink/orange decorative crossfade, 1200ms finite translucent supplied-icon flame burst clipped to the header, 600ms count entrance, 300ms settle and default-color restoration.
-- Count adapts confirmation ticket `greenCircleIn`/`greenContentIn` circular reveal + scale pop and its radial shrinking spark choreography, recolored pink/orange. No ticket flight, confirmation copy or looping effects. Fixed Spanish compact counts remain above the score without layout shifts.
+- `FeaturedMatchMotion.tsx`: central viewport IntersectionObserver, once per match per page session. 250ms pink/orange decorative crossfade, 2200ms finite translucent supplied-icon flame burst clipped to the header, 600ms count entrance, 300ms settle and default-color restoration.
+- Count adapts confirmation ticket `greenCircleIn`/`greenContentIn` circular reveal + scale pop and its radial shrinking spark choreography, recolored pink/orange. No ticket flight, confirmation copy or looping effects. Fixed compact BETS counts remain above the score without layout shifts.
 - Temporary layers disappear; default colored glow stays 50%, rim 40% with downward fade, black markets wash 40%, player spacing unchanged. Page-session registry prevents scroll/tab replay; interrupted sequences settle on return. Observer/timers are cleaned up on unmount. Reduced motion displays the settled count immediately.
 - Shared tunables: `buttonProgressionConfig.featuredMatch`, independent of the bet-slip progression master switch. Figma nodes `2519:161561`, `2537:13796`, `2537:18054` supplied visual states but no motion keyframes; timing follows the requested fallback.
+
+- Flame visibility refinement: 1400ms linear rises, 60ms stagger, 14–18px sizes, slight lateral drift, 42% peak opacity, explicit particle layer above glow and below header content. Last flame completes at 2370ms before the 2450ms count boundary; 600ms count entrance is unchanged.
+- Para ti horizontal scrollers override only vertical overscroll containment so wheel/touch gestures chain to the feed. No wheel interception or body scroll locks were added.
+
+- Flame opacity has explicit duration/delay alongside its keyframe times. Framer Motion property-specific transitions otherwise use their own short defaults, fading particles before their upward travel completes.
