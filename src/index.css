@@ -470,7 +470,7 @@ body {
 .personalized-feed > section > div:last-child > div:first-child > div { width: min(350px, 100%); }
 @media (max-width: 350px) { .featured-header { grid-template-columns: minmax(0,1fr) 70px minmax(0,1fr); } }
 
-.featured-decoration::before { content: ""; position: absolute; z-index: 1; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#0066b0,#fcbf00); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; pointer-events: none; }
+.featured-decoration::before { content: ""; opacity: .4; position: absolute; z-index: 1; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#0066b0,#fcbf00); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; pointer-events: none; }
 
 .personalized-match-card { padding-top: 10px; }
 .personalized-match-card > div:first-child { min-height: 64px; padding-bottom: 6px; }
