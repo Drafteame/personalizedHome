@@ -485,7 +485,7 @@ body {
   z-index: -1;
   inset: 0;
   border-radius: inherit;
-  background: rgba(0,0,0,.4);
+  /* The colored glow already has 50% opacity; do not darken it again. */
   pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
   mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
