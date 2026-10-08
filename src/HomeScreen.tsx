@@ -719,6 +719,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
         </div>
       </div>
       <div className="featured-body">
+        <div aria-hidden className="featured-decoration" />
         <div className="featured-markets">
           <div>
             <div className="featured-market-title">Ganador <span className="featured-badge">90’</span></div>

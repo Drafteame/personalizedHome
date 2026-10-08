@@ -457,11 +457,11 @@ body {
 .featured-team span img { width: 14px; height: 14px; object-fit: contain; }
 .featured-score { grid-column: 2; grid-row: 1; height: 62px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; }
 .featured-score strong { font-size: 24px; font-weight: 900; line-height: 36px; background: linear-gradient(#fbfbfb 51%, transparent 94%); background-clip: text; -webkit-text-fill-color: transparent; }
-.featured-body { position: relative; border: 1px solid transparent; border-radius: 32px 32px 0 0; background: rgba(0,0,0,.4); padding: 10px 0 12px; overflow: hidden; }
+.featured-body { position: relative; border: 1px solid transparent; border-radius: 32px 32px 0 0; isolation: isolate; padding: 10px 0 12px; }
 .featured-markets { display: flex; flex-direction: column; gap: 10px; padding: 0 9px; }
 .featured-market-title { display: flex; align-items: center; justify-content: center; gap: 2px; color: rgba(251,251,251,.7); font-size: 12px; line-height: 18px; margin-bottom: 2px; }
 .featured-badge { background: rgba(251,251,251,.16); border-radius: 6px; padding: 0 4px; font-size: 10px; line-height: 15px; font-weight: 700; }
-.featured-players { display: flex; gap: 8px; overflow-x: auto; margin: 20px 0 0; padding: 0 9px; scroll-snap-type: x mandatory; }
+.featured-players { display: flex; gap: 8px; overflow-x: auto; margin: 16px 5px -4px; padding: 4px; scroll-padding-inline: 4px; scroll-snap-type: x mandatory; }
 .featured-player { position: relative; width: 152px; flex-shrink: 0; padding-right: 8px; border-right: 1px solid rgba(251,251,251,.16); background: black; scroll-snap-align: start; }
 .featured-player-odds { display: flex; gap: 4px; overflow-x: auto; margin-top: 6px; }
 .featured-player-odds button { flex: 0 0 58px; }
@@ -470,7 +470,7 @@ body {
 .personalized-feed > section > div:last-child > div:first-child > div { width: min(350px, 100%); }
 @media (max-width: 350px) { .featured-header { grid-template-columns: minmax(0,1fr) 70px minmax(0,1fr); } }
 
-.featured-body::before { content: ""; position: absolute; z-index: 1; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#0066b0,#fcbf00); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; pointer-events: none; }
+.featured-decoration::before { content: ""; position: absolute; z-index: 1; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#0066b0,#fcbf00); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask-composite: exclude; -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; pointer-events: none; }
 
 .personalized-match-card { padding-top: 10px; }
 .personalized-match-card > div:first-child { min-height: 64px; padding-bottom: 6px; }
@@ -478,3 +478,15 @@ body {
 .personalized-match-card > div:first-child > div:nth-child(2) > div:first-child { padding: 0; gap: 4px; }
 .personalized-match-card > div:first-child > div:nth-child(2) > div:first-child p { font-size: 10px; line-height: 15px; }
 .personalized-match-card > div:first-child > div:nth-child(2) > div:first-child > div:first-child > span { display: none; }
+
+/* Fade only the artwork; offer content stays fully opaque. */
+.featured-decoration {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(0,0,0,.4);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 48%, transparent 98%);
+}
