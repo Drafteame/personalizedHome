@@ -11,17 +11,18 @@ import { useEffect, useRef, useState } from 'react';
 import checkIcon from './assets/success-check-3d.png';
 import boosterIcon from './assets/booster.png';
 import freeBetIcon from './assets/apuestaGratis.png';
+import rescateIcon from './assets/rescateWings.png';
 import type { ActivePromo } from './types';
-import { promoConfig } from './promoConfig';
+import { promoConfig, ticketArtwork, ticketArtworkLayout } from './promoConfig';
 
 /**
  * EntryCreatedOverlay — the success confirmation animation.
  *
  * ONE shape for every success flow (swipe-to-confirm on the expanded slip,
  * swipe-to-play on the "Resumen de tu entrada" full sheet, AND the lightning
- * long-press): a compact green ticket/stub (Figma 35252:75429 — 154.975×61, rounded
- * corners + a semicircular notch on the mid-left/right edges, radial-green
- * fill, soft white rim, green glow, 3D check + rotated two-line text).
+ * long-press): a compact ticket/stub (original Figma 35252:75429 footprint — 154.975×61, rounded
+ * corners + a semicircular notch on the mid-left/right edges, dark fill,
+ * themed 4px rim/glow, 3D illustration + rotated two-line text).
  * The old full-width green card is gone.
  *
  *   1. The ticket emerges where the slip was — a circular clip-path reveal
@@ -35,7 +36,7 @@ import { promoConfig } from './promoConfig';
  *   3. The ticket fades out over its last few px of travel so it is fully
  *      gone `vanish.gapPx` above the tab — never overlapping it. onCatch()
  *      fires at that vanish moment (tab icon bumps to "catch" it); onDone()
- *      follows `doneDelayMs` later (app then pops the badge + "¿Reusar?").
+ *      follows `doneDelayMs` later (app then records the entry + pops the badge).
  *
  * Flight timing lives in `cfg`; entrance timing in the index.css keyframes.
  */
@@ -48,13 +49,12 @@ const cfg = {
   // when a browser backgrounds/throttles the page; the decorative ticket must
   // never keep the success state alive (and the offer suppressed) forever.
   lifecycleMaxMs: 3000,
-  // Ticket geometry (Figma 35252:75429). The shape itself (rounded corners +
-  // mid-edge notches) is the exact Figma vector `TICKET_FILL_PATH`, authored in
-  // a 16..170.975 / 16..77 space, so the SVG uses viewBox `TICKET_VIEWBOX`.
+  // Preserve the original Figma 35252:75429 animation footprint. The new
+  // exported ticket assets retain these bounds inside their 16px glow inset.
   ticket: {
     widthPx: 154.975,
     heightPx: 61,
-    rimWidthPx: 4, // visible inside rim; clip a double-width centered stroke
+    rimWidthPx: 4, // reference thickness; baked into the exact Figma SVG assets
     bottomPx: 86, // sits 12px above the 74px-tall navbar
   },
   // One-shot celebration burst when the circular reveal completes — the
@@ -113,81 +113,34 @@ const cfg = {
   },
 };
 
-// Ticket outline — the exact Figma vector (node 35252:75430 "Subtract"):
-// rounded corners with Figma corner-smoothing + a semicircular notch cut into
-// the mid-left and mid-right edges. Authored in a 16..170.975 (w 154.975) / 16..77
-// (h 61) box, so the SVG renders it through TICKET_VIEWBOX. Clip the rim to
-// this same path so its full visible width sits inside the unchanged outline.
-const TICKET_FILL_PATH =
-  'M145.388 16C154.348 16 158.828 16.0003 162.251 17.7441C165.262 19.2781 167.709 21.7257 169.243 24.7363C170.659 27.5157 170.925 30.9926 170.975 37C165.458 37.0069 160.987 41.4814 160.987 47C160.987 52.5147 165.451 56.9859 170.963 56.999C170.89 62.4 170.579 65.6421 169.243 68.2637C167.709 71.2743 165.262 73.7219 162.251 75.2559C158.828 76.9997 154.348 77 145.388 77H41.5869C32.6264 77 28.1462 76.9997 24.7236 75.2559C21.713 73.7219 19.2654 71.2743 17.7314 68.2637C16.3957 65.6421 16.0839 62.4 16.0107 56.999C21.5228 56.9864 25.9873 52.515 25.9873 47C25.9873 41.4814 21.517 37.0069 16 37C16.05 30.9926 16.3153 27.5157 17.7314 24.7363C19.2654 21.7257 21.713 19.2781 24.7236 17.7441C28.1462 16.0003 32.6264 16 41.5869 16H145.388Z';
-const TICKET_VIEWBOX = '16 16 154.975 61';
-
-/** Green glow only (single drop-shadow → no ghosting). The rim stroke is drawn
- *  by the SVG path. Put on the wrapper so it follows the ticket's alpha.
- *  `glowV` (0→1) intensifies the flash. Base matches the Figma drop-shadow
- *  (#36E5A9 @ 36%, blur 8). */
+/** The artwork supplies the fill/rim; its exported outer shadow is disabled.
+ * Keep the original single-shadow baseline and flash response on the wrapper. */
 function ticketGlow(glowV: number, promo: ActivePromo = null): string {
-  if (promo) return `drop-shadow(0 0 ${16 + glowV * 30}px rgba(${promoConfig[promo].glowRgb},${0.36 + glowV * 0.5}))`;
-  return `drop-shadow(0 0 ${16 + glowV * 30}px rgba(54,229,169,${0.36 + glowV * 0.5}))`;
+  const artwork = ticketArtwork[promo ?? 'default'];
+  return `drop-shadow(0 0 ${16 + glowV * 30}px rgba(${artwork.glowRgb},${0.36 + glowV * 0.5}))`;
 }
 
-/** The ticket face — one SVG shape (radial-green fill + soft white inside rim,
- *  notches included) with the 3D check + rotated two-line message overlaid.
- *  `entering` plays the content pop. Shared by the resting ticket and flying clone. */
+/** Exact Figma background/rim/light assets, shared by resting and flying
+ * tickets. Intrinsic export padding sits outside the original footprint. */
 function TicketFace({ entering = false, promo = null }: { entering?: boolean; promo?: ActivePromo }) {
+  const artwork = ticketArtwork[promo ?? 'default'];
+  const layout = ticketArtworkLayout;
   return (
     <>
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox={TICKET_VIEWBOX}
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <defs>
-          <clipPath id="ticketRimClip">
-            <path d={TICKET_FILL_PATH} />
-          </clipPath>
-          {promo && <linearGradient id="promoTicketFill" x1="0" y1="0.5" x2="1" y2="0.5" gradientTransform={promoConfig[promo].paintTransform}>
-            <stop stopColor={promoConfig[promo].ticketColors[0]} />
-            <stop offset="1" stopColor={promoConfig[promo].ticketColors[1]} />
-          </linearGradient>}
-          <radialGradient
-            id="ticketFill"
-            cx="0"
-            cy="0"
-            r="1"
-            gradientUnits="userSpaceOnUse"
-            gradientTransform="translate(93.4878 38.0909) rotate(90) scale(72.7548 67.0318)"
-          >
-            <stop stopColor="#29C28A" />
-            <stop offset="0.5" stopColor="#1DAC7C" />
-            <stop offset="1" stopColor="#059669" />
-          </radialGradient>
-        </defs>
-        <path
-          d={TICKET_FILL_PATH}
-          fill={promo ? 'url(#promoTicketFill)' : 'url(#ticketFill)'}
-          fillOpacity={promo ? 1 : 0.95}
-        />
-        {/* Half of a centered stroke lies inside the path. Clipping an 8px
-            stroke to the fill gives a true 4px rim, including the notches,
-            without expanding the ticket silhouette or changing its viewBox. */}
-        <path
-          d={TICKET_FILL_PATH}
-          fill="none"
-          stroke="#FBFBFB"
-          strokeOpacity="0.32"
-          strokeWidth={cfg.ticket.rimWidthPx * 2}
-          clipPath="url(#ticketRimClip)"
-        />
-      </svg>
+      <img src={artwork.base} alt="" aria-hidden draggable={false}
+        className="pointer-events-none absolute max-w-none"
+        style={{ left: -layout.exportInsetPx, top: -layout.exportInsetPx }} />
+      <img src={artwork.light} alt="" aria-hidden draggable={false}
+        className="pointer-events-none absolute max-w-none"
+        style={{ left: -layout.exportInsetPx, top: -layout.exportInsetPx }} />
       <div
-        className={`absolute inset-0 flex items-center justify-center gap-[6px]${
+        style={{ left: artwork.contentLeftPx, top: layout.contentTopPx, gap: artwork.contentGapPx }}
+        className={`absolute flex items-center${
           entering ? ' animate-[greenContentIn_0.16s_cubic-bezier(0.16,1,0.3,1)]' : ''
         }`}
       >
         {promo ? <div className="relative size-[36px] shrink-0" style={promo === 'booster' ? { filter: 'drop-shadow(0px 5px 5.6px rgba(102,0,120,0.46))' } : undefined}>
-          <img src={promo === 'booster' ? boosterIcon : freeBetIcon} alt="" aria-hidden className={promo === 'booster' ? 'absolute inset-[-19.38%_-18.91%_-16.83%_-17.3%] h-[136.21%] w-[136.21%] max-w-none rotate-12 object-contain' : 'size-full object-contain'} />
+          <img src={promo === 'booster' ? boosterIcon : promo === 'rescate' ? rescateIcon : freeBetIcon} alt="" aria-hidden className={promo === 'booster' ? 'absolute inset-[-19.38%_-18.91%_-16.83%_-17.3%] h-[136.21%] w-[136.21%] max-w-none rotate-12 object-contain' : 'size-full object-contain'} />
         </div> : <div
           className="relative size-[36px] shrink-0"
           style={{ filter: 'drop-shadow(0px 1px 4.1px rgba(0,78,53,0.71))' }}
@@ -204,7 +157,7 @@ function TicketFace({ entering = false, promo = null }: { entering?: boolean; pr
               layer, keeping the metallic check in the ticket's green family. */}
           <div className="absolute inset-[16.15%_15.1%_15.1%_16.15%] rounded-[100px] bg-[#34d399] opacity-50 mix-blend-color-burn blur-[11px]" />
         </div>}
-        <div className="flex h-[40.631px] w-[75.169px] items-center justify-center">
+        <div className="flex items-center justify-center" style={{ height: layout.textHeightPx, width: layout.textWidthPx }}>
           <p style={promo ? { textShadow: '0px 1px 2px rgba(0,0,0,0.46)' } : undefined} className="rotate-[-3.7deg] whitespace-nowrap text-[14px] font-black italic leading-[18px] text-[#fbfbfb]">
             ¡ENTRADA
             <br aria-hidden />

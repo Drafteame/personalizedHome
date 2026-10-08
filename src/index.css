@@ -429,3 +429,20 @@ body {
 .freebet-gradient-border[data-active='true']::before {
   background: #f0abfc;
 }
+
+/* Quick Bet Rescate 2215:31092 / 2215:31082: 56% idle rim, full selected rim. */
+.rescate-gradient-border { position: relative; }
+.rescate-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--rescate-border);
+  opacity: 0.56;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.rescate-gradient-border[data-active='true']::before { opacity: 1; }

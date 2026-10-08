@@ -6,7 +6,7 @@ import {
   useSpring,
   useTransform,
 } from 'framer-motion';
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { AmountKeypad, KEYPAD_H } from './AmountKeypad';
 import { useStakeKeypad } from './useStakeKeypad';
 import { useVerticalSwipe } from './useVerticalSwipe';
@@ -17,6 +17,9 @@ import clockIcon from './assets/clock.svg';
 import closeIcon from './assets/close.svg';
 import editIcon from './assets/edit.svg';
 import freebetIllus from './assets/apuestaGratis.png';
+import rescateIllus from './assets/rescate.png';
+import rescateChevron from './assets/rescate-chevron-down.svg';
+import rescateClock from './assets/rescate-clock.svg';
 import trashIcon from './assets/trash.svg';
 import { SelectionGroups } from './SelectionGroups';
 import { SwipeToConfirm } from './SwipeToConfirm';
@@ -123,6 +126,34 @@ function FreeBetPromoTile({
   );
 }
 
+function RescatePromoTile({ active, toggleEnabled, onToggle }: {
+  active: boolean;
+  toggleEnabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div data-promo="rescate" data-active={active}
+      className="rescate-gradient-border flex h-[52px] shrink-0 snap-start items-center gap-2 rounded-[20px] py-[6px] pl-2 pr-[10px]"
+      style={{ width: active ? 269 : 268, backgroundImage: active ? promoConfig.rescate.selectedBackground : undefined,
+        '--rescate-border': promoConfig.rescate.borderBackground } as CSSProperties}>
+      <div className="size-9 shrink-0 overflow-hidden">
+        <img src={rescateIllus} alt="" draggable={false} className="block size-full object-contain" />
+      </div>
+      <div className="flex h-10 min-w-px flex-1 flex-col justify-center">
+        <div className="flex items-center gap-0.5">
+          <span className="min-w-0 flex-1 truncate text-[14px] font-bold leading-[21px] text-[#fbfbfb]">{promoConfig.rescate.title}</span>
+          <img src={rescateChevron} alt="" className="shrink-0" />
+        </div>
+        <div className="flex h-5 items-center gap-1 self-start rounded-xl bg-[rgba(251,251,251,0.12)] px-1">
+          <img src={rescateClock} alt="" />
+          <span className="whitespace-nowrap text-[12px] font-medium leading-[18px] text-[#fbfbfb]">{promoConfig.rescate.countdown}</span>
+        </div>
+      </div>
+      <PromoSwitch active={active} enabled={toggleEnabled} label="Activar rescate" onToggle={onToggle} />
+    </div>
+  );
+}
+
 function AllPromosButton() {
   return (
     <button
@@ -163,6 +194,11 @@ function PromoCarousel({ toggleEnabled, activePromo, onPromoChange }: {
           className="h-[54px] w-[268px] shrink-0 snap-start"
           toggleEnabled={toggleEnabled}
           onToggle={() => onPromoChange(activePromo === 'booster' ? null : 'booster')}
+        />
+        <RescatePromoTile
+          active={activePromo === 'rescate'}
+          toggleEnabled={toggleEnabled}
+          onToggle={() => onPromoChange(activePromo === 'rescate' ? null : 'rescate')}
         />
       </div>
       <AllPromosButton />
@@ -594,7 +630,7 @@ export function BetSlipFullSheet({
             <div className="relative flex min-w-px flex-1 flex-col items-center pt-[11px]">
               <div className="flex h-12 w-full items-center justify-center overflow-hidden rounded-[12px] border border-[rgba(251,251,251,0.12)] p-3">
                 <p className={`whitespace-nowrap text-[16px] font-bold leading-6 ${booster ? 'bg-clip-text text-transparent' : 'text-[#fbbf24]'}`} style={booster ? { backgroundImage: promoConfig.booster.winningsBackground } : undefined}>
-                  ${activePromo ? <>{winWhole}<span className="text-[12px]">.{winCents}</span></> : potentialWin}
+                  ${booster || freeBet ? <>{winWhole}<span className="text-[12px]">.{winCents}</span></> : potentialWin}
                 </p>
               </div>
               <div className="absolute left-2 top-0 flex items-center rounded-[4px] bg-[#121212] px-1.5 py-0.5">

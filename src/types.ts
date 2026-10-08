@@ -18,7 +18,7 @@ export type Selection = {
 };
 
 /** A slip can apply at most one promotion. */
-export type ActivePromo = 'booster' | 'freebet' | null;
+export type ActivePromo = 'booster' | 'freebet' | 'rescate' | null;
 
 export type Tier = 0 | 1 | 2 | 3 | 4;
 
