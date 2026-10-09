@@ -796,16 +796,13 @@ function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps &
       </button>)}
     </div>
     </div>
-    <div className={`personalized-feed ${buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled ? 'personalized-feed-sticky' : ''}`}>
+    <div className="personalized-feed">
     {sections.length === 0 && <p className="text-center text-sm text-white/70" role="status">{mode === 'live' ? 'No hay partidos en vivo por ahora.' : 'No hay próximos partidos por ahora.'}</p>}
     {sections.map(({title, matches}) => <section key={title} aria-label={title}>
-      <span className="personalized-heading-anchor" aria-hidden />
-      <h2 className="personalized-league-heading flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]"><span className="personalized-heading-light" aria-hidden />{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
-      <div className="personalized-heading-content">
+      <h2 className="flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
       <FeaturedMatch key={matches[0].matchId} match={matches[0]} {...props} />
       {matches.length > 1 && <><p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
       <PromoCarousel key={`${title}-${mode}`} matches={matches.slice(1)} featuredLayout {...props} /></>}
-      </div>
     </section>)}
     </div>
   </div>;
@@ -1212,45 +1209,8 @@ export function HomeScreenChrome({
 }: HomeScreenChromeProps) {
   const [activeLeague, setActiveLeague] = useState('todofut');
   const [personalizedMode, setPersonalizedMode] = useState<MatchMode>('live');
-  const chromeRef = useRef<HTMLDivElement>(null);
-  const appHeaderRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled || !appHeaderRef.current) return;
-    const header = appHeaderRef.current;
-    const scrollViewport = chromeRef.current?.parentElement;
-    let headingObserver: IntersectionObserver | undefined;
-    let fadeFrame = 0;
-    const updateFade = () => {
-      const fades = [...(chromeRef.current?.querySelectorAll<HTMLElement>('.personalized-heading-content') ?? [])].map(content => ({
-        content,
-        boundary: content.previousElementSibling!.getBoundingClientRect().bottom - content.getBoundingClientRect().top,
-      }));
-      for (const { content, boundary } of fades) content.style.setProperty('--heading-fade-boundary', `${boundary}px`);
-    };
-    const scheduleFade = () => { if (!fadeFrame) fadeFrame = requestAnimationFrame(() => { fadeFrame = 0; updateFade(); }); };
-    const measure = () => {
-      const height = header.getBoundingClientRect().height;
-      chromeRef.current?.style.setProperty('--personalized-header-height', `${height}px`);
-      updateFade();
-      headingObserver?.disconnect();
-      // Only paint the gradient continuation after the title pins. Its normal-flow
-      // position must leave the original raised BETS presentation unobscured.
-      headingObserver = new IntersectionObserver(entries => {
-        for (const entry of entries) {
-          const title = entry.target.nextElementSibling as HTMLElement | null;
-          if (title) title.dataset.pinned = String(entry.boundingClientRect.top < header.getBoundingClientRect().bottom);
-        }
-      }, { root: chromeRef.current?.parentElement, rootMargin: `-${height}px 0px 0px 0px` });
-      chromeRef.current?.querySelectorAll('.personalized-heading-anchor').forEach(anchor => headingObserver?.observe(anchor));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    scrollViewport?.addEventListener('scroll', scheduleFade, { passive: true });
-    return () => { observer.disconnect(); headingObserver?.disconnect(); scrollViewport?.removeEventListener('scroll', scheduleFade); cancelAnimationFrame(fadeFrame); };
-  }, [activeLeague, personalizedMode]);
   return (
-    <div ref={chromeRef} className="flex w-full flex-col">
+    <div className="flex w-full flex-col">
       {/* PINNED HEADER — ONE sticky surface holding the logo/balance bar, the
           leagues row, the match tabs and the pill markets. It's a SINGLE tier
           (not two) so the decorative glow can span behind ALL of it as one
@@ -1269,7 +1229,7 @@ export function HomeScreenChrome({
           On the desktop phone-mockup (min-[431px]) we add back the vertical
           space the old fake status bar occupied so the header clears the notch;
           real mobile relies on the device's own status bar for that inset. */}
-      <div ref={appHeaderRef} className="sticky top-0 z-30 overflow-hidden bg-black min-[431px]:pt-11">
+      <div className="sticky top-0 z-30 overflow-hidden bg-black min-[431px]:pt-11">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[100px]"

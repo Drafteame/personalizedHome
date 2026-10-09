@@ -9,7 +9,6 @@ import type { TierConfig } from './types';
  */
 export const buttonProgressionConfig = {
   personalizedFeed: {
-    stickyLeagueHeadingsEnabled: true, // false restores normal section headings
     toggleMs: 180,
     toggleEase: [0.4, 0, 0.2, 1] as [number, number, number, number],
   },
