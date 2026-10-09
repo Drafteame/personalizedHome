@@ -774,7 +774,8 @@ function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps &
     { title: 'Champions', matches: MATCHES.slice(0, 3) },
     { title: 'Premier', matches: PREMIER_MATCHES },
   ].map(section => ({ ...section, matches: section.matches.filter(match => match.status === mode) })).filter(section => section.matches.length > 0);
-  return <div className={`personalized-feed ${buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled ? 'personalized-feed-sticky' : ''}`}>
+  return <div className="personalized-offer">
+    <div className="personalized-mode-wrapper">
     <div className="personalized-mode-toggle" role="group" aria-label="Estado de los partidos">
       {(['live', 'prematch'] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => onModeChange(value)}>
         {mode === value && <motion.span className="personalized-mode-indicator" layoutId="personalized-mode-indicator" transition={{ duration: reduced ? 0 : buttonProgressionConfig.personalizedFeed.toggleMs / 1000, ease: buttonProgressionConfig.personalizedFeed.toggleEase }} />}
@@ -782,13 +783,17 @@ function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps &
         <span>{value === 'live' ? 'Live' : 'Próximos'}</span>
       </button>)}
     </div>
+    </div>
+    <div className={`personalized-feed ${buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled ? 'personalized-feed-sticky' : ''}`}>
     {sections.length === 0 && <p className="text-center text-sm text-white/70" role="status">{mode === 'live' ? 'No hay partidos en vivo por ahora.' : 'No hay próximos partidos por ahora.'}</p>}
     {sections.map(({title, matches}) => <section key={title} aria-label={title}>
+      <span className="personalized-heading-anchor" aria-hidden />
       <h2 className="personalized-league-heading flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
       <FeaturedMatch key={matches[0].matchId} match={matches[0]} {...props} />
       {matches.length > 1 && <><p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
       <PromoCarousel key={`${title}-${mode}`} matches={matches.slice(1)} featuredLayout {...props} /></>}
     </section>)}
+    </div>
   </div>;
 }
 
@@ -1198,17 +1203,26 @@ export function HomeScreenChrome({
   useEffect(() => {
     if (!buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled || !appHeaderRef.current) return;
     const header = appHeaderRef.current;
-    const scrollViewport = chromeRef.current?.parentElement;
+    let headingObserver: IntersectionObserver | undefined;
     const measure = () => {
-      chromeRef.current?.style.setProperty('--personalized-header-height', `${header.getBoundingClientRect().height}px`);
-      if (scrollViewport) chromeRef.current?.style.setProperty('--personalized-viewport-height', `${scrollViewport.clientHeight}px`);
+      const height = header.getBoundingClientRect().height;
+      chromeRef.current?.style.setProperty('--personalized-header-height', `${height}px`);
+      headingObserver?.disconnect();
+      // Only paint the sticky backdrop after the title pins. Its normal-flow
+      // position must leave the original raised BETS presentation unobscured.
+      headingObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          const title = entry.target.nextElementSibling as HTMLElement | null;
+          if (title) title.dataset.pinned = String(entry.boundingClientRect.top < header.getBoundingClientRect().bottom);
+        }
+      }, { root: chromeRef.current?.parentElement, rootMargin: `-${height}px 0px 0px 0px` });
+      chromeRef.current?.querySelectorAll('.personalized-heading-anchor').forEach(anchor => headingObserver?.observe(anchor));
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(header);
-    if (scrollViewport) observer.observe(scrollViewport);
-    return () => observer.disconnect();
-  }, []);
+    return () => { observer.disconnect(); headingObserver?.disconnect(); };
+  }, [activeLeague, personalizedMode]);
   return (
     <div ref={chromeRef} className="flex w-full flex-col">
       {/* PINNED HEADER — ONE sticky surface holding the logo/balance bar, the
