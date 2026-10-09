@@ -87,22 +87,25 @@ function makeFlames() {
 
 export function FeaturedMatchParticles({ phase, onFlamesComplete }: { phase: Phase; onFlamesComplete: () => void }) {
   const [flames] = useState(makeFlames);
-  useEffect(() => {
-    if (phase !== 'flames') return;
-    // This deadline is derived from each sampled opacity animation, so the
-    // handoff lands on the final visible pixel rather than a separate buffer.
-    const lastOpacity = Math.max(...flames.map(f => cfg.activationMs + f.delay + f.duration));
-    const timer = window.setTimeout(onFlamesComplete, lastOpacity);
-    return () => window.clearTimeout(timer);
-  }, [flames, phase, onFlamesComplete]);
+  const visibleFlames = useRef(new Set<number>());
+  const fadedFlames = useRef(new Set<number>());
   if (phase !== 'flames' && phase !== 'entrance') return null;
   return <div className="featured-particles" aria-hidden>
     {phase === 'flames' ? flames.map(f =>
       <motion.img key={`flame-${f.id}`} src={flameIcon} alt="" draggable={false}
         style={{ position: 'absolute', left: `${f.left}%`, bottom: f.bottom, width: f.size, height: f.size }}
-        initial={{ y: 0, opacity: 0, scale: 0.7 }}
+        initial={{ x: 0, y: 0, opacity: 0, scale: 0.7 }}
         animate={{ x: f.drift, y: -f.rise, opacity: [0, f.opacity, f.opacity, 0], scale: [0.7, 1, 0.8] }}
-        transition={{ delay: (cfg.activationMs + f.delay) / 1000, duration: f.duration / 1000, ease: 'linear', opacity: { duration: f.duration / 1000, delay: (cfg.activationMs + f.delay) / 1000, ease: 'linear', times: [0, 0.15, 0.65, 1] } }} />
+        onUpdate={latest => {
+          // Watch the opacity itself: movement completion and wall-clock timers
+          // can drift from the last visible frame under browser throttling.
+          if (Number(latest.opacity) > 0) visibleFlames.current.add(f.id);
+          else if ((visibleFlames.current.has(f.id) || Number(latest.y) === -f.rise) && !fadedFlames.current.has(f.id)) {
+            fadedFlames.current.add(f.id);
+            if (fadedFlames.current.size === flames.length) onFlamesComplete();
+          }
+        }}
+        transition={{ delay: (cfg.activationMs + f.delay) / 1000, duration: f.duration / 1000, ease: 'linear', x: { ease: cfg.flameDriftEase }, scale: { ease: cfg.flameDriftEase }, opacity: { duration: f.duration / 1000, delay: (cfg.activationMs + f.delay) / 1000, ease: cfg.flameOpacityEase, times: [0, 0.15, 0.65, 1] } }} />
     ) : Array.from({ length: cfg.sparkCount }, (_, i) => {
       const angle = i * Math.PI * 2 / cfg.sparkCount;
       // Ticket confirmation's radial launch, opacity envelope and shrinking sparks.
@@ -121,14 +124,14 @@ export function FeaturedBetCount({ count, phase, onEntranceComplete }: { count: 
   return <motion.div onAnimationComplete={onEntranceComplete} className="featured-bet-count" aria-label={`${count.toLocaleString('es-MX')} apuestas en juego`}
     initial={entering ? { opacity: 0, scale: cfg.entrance.scale, y: cfg.entrance.y, clipPath: 'circle(12px at 50% 50%)' } : false}
     animate={{ opacity: 1, scale: 1, y: entering ? cfg.entrance.y : 0, clipPath: 'circle(75% at 50% 50%)' }}
-    transition={{ duration: (entering ? cfg.entranceMs : cfg.settleMs) / 1000, ease: cfg.ease }}>
+    transition={{ duration: (entering ? cfg.entranceMs : cfg.settleMs) / 1000, ease: entering ? cfg.ease : cfg.settleEase }}>
     <motion.div className="featured-count-content" initial={false}
-      animate={{ scaleX: entering ? [1, cfg.entrance.scaleX, 1] : 1, scaleY: entering ? [1, cfg.entrance.scaleY, 1] : 1, rotate: entering ? cfg.entrance.rotate : 0 }}
-      transition={{ duration: cfg.entranceMs / 1000, ease: cfg.ease }}>
-      <motion.img initial={false} src={flameIcon} alt="" animate={{ width: entering ? 24 : 12, height: entering ? 24 : 12 }} transition={{ duration: cfg.settleMs / 1000 }} />
-      <motion.div initial={false} style={{ fontSize: 10 }} animate={{ fontSize: entering ? 12 : 10, color: entering ? '#fbfbfb' : 'rgba(251,251,251,.7)' }} transition={{ duration: cfg.settleMs / 1000 }}>
+      animate={{ scaleX: phase === 'entrance' ? [1, cfg.entrance.scaleX, 1] : 1, scaleY: phase === 'entrance' ? [1, cfg.entrance.scaleY, 1] : 1, rotate: entering ? cfg.entrance.rotate : 0 }}
+      transition={{ duration: (entering ? cfg.entranceMs : cfg.settleMs) / 1000, ease: entering ? cfg.ease : cfg.settleEase }}>
+      <motion.img initial={false} src={flameIcon} alt="" animate={{ width: entering ? 24 : 12, height: entering ? 24 : 12 }} transition={{ duration: cfg.settleMs / 1000, ease: cfg.settleEase }} />
+      <motion.div initial={false} style={{ fontSize: 10 }} animate={{ fontSize: entering ? 12 : 10, color: entering ? '#fbfbfb' : 'rgba(251,251,251,.7)' }} transition={{ duration: cfg.settleMs / 1000, ease: cfg.settleEase }}>
         <span>{label.toUpperCase()} BETS</span>
-        <motion.span initial={false} className="featured-count-subtitle" aria-hidden={!entering} animate={{ opacity: entering ? 1 : 0, height: entering ? 12 : 0 }} transition={{ duration: cfg.settleMs / 1000 }}>EN JUEGO</motion.span>
+        <motion.span initial={false} className="featured-count-subtitle" aria-hidden={!entering} animate={{ opacity: entering ? 1 : 0, height: entering ? 12 : 0 }} transition={{ duration: cfg.settleMs / 1000, ease: cfg.settleEase }}>EN JUEGO</motion.span>
       </motion.div>
     </motion.div>
   </motion.div>;

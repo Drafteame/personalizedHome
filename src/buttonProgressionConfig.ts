@@ -13,6 +13,10 @@ export const buttonProgressionConfig = {
     activationMs: 210, entranceMs: 600, holdMs: 1000, settleMs: 300,
     rootMargin: '-20% 0px -35% 0px', // central viewport band, below sticky navigation
     ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ticket content entrance
+    settleEase: [0.4, 0, 0.2, 1] as [number, number, number, number], // coordinated position/size restoration
+    gradientEase: [0.4, 0, 0.2, 1] as [number, number, number, number], // smooth decorative crossfade
+    flameDriftEase: [0.37, 0, 0.63, 1] as [number, number, number, number],
+    flameOpacityEase: [0.42, 0, 0.58, 1] as [number, number, number, number],
     sparkEase: [0.2, 0.7, 0.3, 1] as [number, number, number, number],
     flameCount: 13,
     flamePlacement: { headerWidthPx: 320, minSeparationPx: 22, maxAttempts: 120 },

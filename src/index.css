@@ -501,10 +501,7 @@ body {
 .featured-glow { opacity: calc(.5 * (1 - var(--heat))); }
 .featured-hot-glow { top: 32px; height: 96px; opacity: calc(.24 * var(--heat)); background: linear-gradient(-77.322deg, #ffa901 9.35%, #ff52ba 94.98%); }
 .featured-decoration::before { opacity: calc(.4 * (1 - var(--heat))); }
-.featured-match[data-phase="flames"] .featured-decoration::after,
-.featured-match[data-phase="entrance"] .featured-decoration::after,
-.featured-match[data-phase="holding"] .featured-decoration::after,
-.featured-match[data-phase="settling"] .featured-decoration::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#ff52ba,#ffa901); opacity: calc(.4 * var(--heat)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.featured-decoration::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#ff52ba,#ffa901); opacity: calc(.4 * var(--heat)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 .featured-header { position: relative; isolation: isolate; }
 .featured-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .featured-header > .featured-team, .featured-header > .featured-score { position: relative; z-index: 1; }

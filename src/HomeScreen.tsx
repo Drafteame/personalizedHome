@@ -706,9 +706,9 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
   const players = [...new Set(picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET).map(p => p.pick.split(' · ')[0]))];
   const renderPick = (p: Selection, label: string) => <PickButton key={p.id} p={p} label={label} selected={props.selectedIds.has(p.id)} bindPick={bindPick} />;
   return (
-    <motion.article className="featured-match" data-phase={phase} initial={false} animate={{ "--heat": hot ? 1 : 0 }} transition={{ duration: (hot ? buttonProgressionConfig.featuredMatch.activationMs : buttonProgressionConfig.featuredMatch.settleMs) / 1000 }} aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
+    <motion.article className="featured-match" data-phase={phase} initial={false} animate={{ "--heat": hot ? 1 : 0 }} transition={{ duration: (hot ? buttonProgressionConfig.featuredMatch.activationMs : buttonProgressionConfig.featuredMatch.settleMs) / 1000, ease: buttonProgressionConfig.featuredMatch.gradientEase }} aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
       <div aria-hidden className="featured-glow" />
-      {phase !== 'default' && phase !== 'settled' && <div aria-hidden className="featured-glow featured-hot-glow" />}
+      <div aria-hidden className="featured-glow featured-hot-glow" />
       <div className="featured-header" ref={headerRef}>
         <FeaturedMatchParticles phase={phase} onFlamesComplete={onFlamesComplete} />
         {[match.homeName, match.awayName].map((name, i) => (
