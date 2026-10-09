@@ -8,7 +8,9 @@ const cfg = buttonProgressionConfig.featuredMatch;
 type Phase = 'default' | 'flames' | 'entrance' | 'holding' | 'settling' | 'settled';
 // Page-session timestamps prevent replay across tab unmounts.
 const starts = new Map<string, number>();
-const flameEnd = cfg.activationMs + cfg.flameMs;
+// Handoff is tied to the slowest sampled particle, so no idle gap can appear
+// between the final flame fade and the count entrance.
+const flameEnd = cfg.activationMs + cfg.flames.delayMs[1] + cfg.flames.durationMs[1];
 const entranceEnd = flameEnd + cfg.entranceMs;
 const holdEnd = entranceEnd + cfg.holdMs;
 const sequenceEnd = holdEnd + cfg.settleMs;

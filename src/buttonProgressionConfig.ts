@@ -10,7 +10,7 @@ import type { TierConfig } from './types';
 export const buttonProgressionConfig = {
   // Para ti: independent of the bet-slip progression master switch.
   featuredMatch: {
-    activationMs: 250, flameMs: 2200, entranceMs: 600, holdMs: 3000, settleMs: 300,
+    activationMs: 250, entranceMs: 600, holdMs: 2000, settleMs: 300,
     rootMargin: '-20% 0px -35% 0px', // central viewport band, below sticky navigation
     ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ticket content entrance
     sparkEase: [0.2, 0.7, 0.3, 1] as [number, number, number, number],
