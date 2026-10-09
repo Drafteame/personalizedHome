@@ -66,6 +66,18 @@ const PREMIER_MATCHES: MatchInfo[] = [
   MATCHES[3],
   { status: 'live', betCount: 6400, matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
   { status: 'prematch', betCount: 5100, matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
+  { status: 'live', betCount: 4700, matchId: 'new-avl', league: 'Premier', homeName: 'Newcastle', awayName: 'Aston Villa', homeAbbrev: 'NEW', awayAbbrev: 'AVL', matchTime: 'Hoy 17:00' },
+  { status: 'prematch', betCount: 3900, matchId: 'bha-whu', league: 'Premier', homeName: 'Brighton', awayName: 'West Ham', homeAbbrev: 'BHA', awayAbbrev: 'WHU', matchTime: 'Mañana 17:00' },
+  { status: 'prematch', betCount: 4200, matchId: 'eve-ful', league: 'Premier', homeName: 'Everton', awayName: 'Fulham', homeAbbrev: 'EVE', awayAbbrev: 'FUL', matchTime: 'Mañana 20:00' },
+];
+
+// Each mode needs a primary plus the baseline's two other-match cards.
+// Keep the original four-match feed untouched and retain fixture ordering/status.
+const CHAMPIONS_MATCHES: MatchInfo[] = [
+  ...MATCHES.slice(0, 3),
+  { status: 'live', betCount: 7300, matchId: 'bvb-int', league: 'Champions', homeName: 'Borussia Dortmund', awayName: 'Inter', homeAbbrev: 'BVB', awayAbbrev: 'INT', matchTime: 'Hoy 20:00' },
+  { status: 'prematch', betCount: 6200, matchId: 'bay-atm', league: 'Champions', homeName: 'Bayern Munich', awayName: 'Atlético de Madrid', homeAbbrev: 'BAY', awayAbbrev: 'ATM', matchTime: 'Mañana 19:00' },
+  { status: 'prematch', betCount: 5600, matchId: 'ben-juv', league: 'Champions', homeName: 'Benfica', awayName: 'Juventus', homeAbbrev: 'BEN', awayAbbrev: 'JUV', matchTime: 'Mañana 21:00' },
 ];
 
 // Only the match fields carried by each Selection (league/full names live in MATCHES).
@@ -117,7 +129,7 @@ export const MOCK_PICKS: Selection[] = [
 ];
 
 // Personalized markets share App's selection registry and match metadata.
-MOCK_PICKS.push(...PREMIER_MATCHES.slice(1).flatMap((m) =>
+MOCK_PICKS.push(...[...PREMIER_MATCHES.slice(1), ...CHAMPIONS_MATCHES.slice(3)].flatMap((m) =>
   [m.homeName, 'Empate', m.awayName].map((pick, i) => ({
     id: `featured-${m.matchId}-${i}`, market: 'Money line', pick,
     odds: [1.75, 3.8, 2.75][i], ...matchOf(m),
@@ -771,7 +783,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
 function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps & { mode: MatchMode; onModeChange: (mode: MatchMode) => void }) {
   const reduced = usePrefersReducedMotion();
   const sections = [
-    { title: 'Champions', matches: MATCHES.slice(0, 3) },
+    { title: 'Champions', matches: CHAMPIONS_MATCHES },
     { title: 'Premier', matches: PREMIER_MATCHES },
   ].map(section => ({ ...section, matches: section.matches.filter(match => match.status === mode) })).filter(section => section.matches.length > 0);
   return <div className="personalized-offer">

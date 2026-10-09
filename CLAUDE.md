@@ -1,5 +1,6 @@
 ## personalizedHome exploration (2026-10-08)
 
+- Para ti uses `CHAMPIONS_MATCHES` and `PREMIER_MATCHES` with three distinct fixtures per mode: one primary and two secondary cards, matching the pre-filter carousel coverage (`f6a3835`). Original fixtures retain their statuses and relative order; supplemental fixtures and their money-line picks are local mocks. `MATCHES` remains the original four-match feed.
 - Para ti spacing follows pre-toggle baseline `f6a3835`: feed padding `8px 12px 16px`, section gap `24px`, featured-card top margin `8px`, and 32px league headings. The centered toggle lives in a separate `.personalized-mode-wrapper` outside the feed, with its own `8px 12px 0` padding. Sticky headings add no normal-flow height or section minimum height; short final sections retain their natural scroll limit.
 - Zero-flow `.personalized-heading-anchor` sentinels and a header-offset IntersectionObserver mark headings as pinned. Only pinned headings paint their backdrop/fade, leaving the original raised BETS animation visible at the historical spacing. The existing flag disables both sticky styling and observation; observers are refreshed with mode/league changes and measured header resizing.
 
