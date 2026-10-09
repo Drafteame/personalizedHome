@@ -68,12 +68,21 @@ export function useFeaturedMatchSequence(matchId: string) {
 // Sample once for the mounted run; renders and phase changes never reroll particles.
 function makeFlames() {
   const between = (range: readonly number[]) => range[0] + Math.random() * (range[1] - range[0]);
-  return Array.from({ length: cfg.flameCount }, (_, id) => ({
-    id, left: between(cfg.flames.leftPct), delay: between(cfg.flames.delayMs),
-    size: between(cfg.flames.sizePx), opacity: between(cfg.flames.opacity),
-    rise: between(cfg.flames.risePx), duration: between(cfg.flames.durationMs),
-    drift: between(cfg.flames.driftPx), bottom: between(cfg.flames.bottomPx),
-  }));
+  const flames: Array<{ id: number; left: number; delay: number; size: number; opacity: number; rise: number; duration: number; drift: number; bottom: number }> = [];
+  const widthPct = cfg.flamePlacement.headerWidthPx / 100;
+  for (let attempt = 0; attempt < cfg.flamePlacement.maxAttempts && flames.length < cfg.flameCount; attempt += 1) {
+    const size = between(cfg.flames.sizePx);
+    const left = between([cfg.flames.leftPct[0] + size / widthPct, cfg.flames.leftPct[1] - size / widthPct]);
+    const crowded = flames.some(existing => Math.abs(existing.left - left) * widthPct < (existing.size + size) / 2 + cfg.flamePlacement.minSeparationPx);
+    if (crowded) continue;
+    flames.push({
+      id: flames.length, left, delay: between(cfg.flames.delayMs), size,
+      opacity: between(cfg.flames.opacity), rise: between(cfg.flames.risePx),
+      duration: between(cfg.flames.durationMs), drift: between(cfg.flames.driftPx),
+      bottom: between(cfg.flames.bottomPx),
+    });
+  }
+  return flames;
 }
 
 export function FeaturedMatchParticles({ phase, onFlamesComplete }: { phase: Phase; onFlamesComplete: () => void }) {

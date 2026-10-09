@@ -15,10 +15,11 @@ export const buttonProgressionConfig = {
     ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ticket content entrance
     sparkEase: [0.2, 0.7, 0.3, 1] as [number, number, number, number],
     flameCount: 13,
+    flamePlacement: { headerWidthPx: 320, minSeparationPx: 22, maxAttempts: 120 },
     // Last possible flame ends at 210 + 595 + 1190 = 1995ms, before count reveal.
     flames: {
       leftPct: [3, 92], delayMs: [0, 595], sizePx: [12, 18], opacity: [0.28, 0.48],
-      risePx: [26, 46], durationMs: [850, 1190], driftPx: [-6, 6], bottomPx: [2, 12],
+      risePx: [26, 46], durationMs: [850, 1190], driftPx: [-6, 6], bottomPx: [2, 18],
     },
     sparkCount: 12, sparkDistancePx: 24, sparkDurationMs: 400,
     entrance: { y: -21, scale: 0.5, rotate: -3.7, scaleX: 1.035, scaleY: 0.965 },
