@@ -19,6 +19,9 @@ import redCardIcon from './assets/featured-red-card.svg';
 import cornerIcon from './assets/featured-corner.svg';
 import rightChevronIcon from './assets/chevron_right.svg';
 import paraTiIcon from './assets/paraTiIcon.png';
+import liveIcon from './assets/para-ti-live.svg';
+import calendarIcon from './assets/para-ti-calendar.svg';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { useHorizontalDragScroll } from './useHorizontalDragScroll';
 import type { Selection } from './types';
 
@@ -39,7 +42,9 @@ export const GOALS_MARKET = 'Anota gol en cualquier momento';
 export const SHOTS_MARKET = 'Tiros al arco';
 
 // Per-match display metadata (used by the card carousel + the SGP headers).
+type MatchMode = 'live' | 'prematch';
 export type MatchInfo = {
+  status: MatchMode;
   matchId: string;
   league: string;
   homeName: string;
@@ -51,16 +56,16 @@ export type MatchInfo = {
 };
 
 export const MATCHES: MatchInfo[] = [
-  { betCount: 12000, matchId: 'psg-rma', league: 'Champions', homeName: 'Paris-Saint Germain', awayName: 'Real Madrid', homeAbbrev: 'PSG', awayAbbrev: 'RMA', matchTime: 'Hoy 18:00' },
-  { betCount: 8600, matchId: 'ars-rma', league: 'Champions', homeName: 'Arsenal', awayName: 'Real Madrid', homeAbbrev: 'ARS', awayAbbrev: 'RMA', matchTime: 'Hoy 20:00' },
-  { betCount: 9400, matchId: 'fcb-psg', league: 'Champions', homeName: 'Barcelona', awayName: 'Paris-Saint Germain', homeAbbrev: 'FCB', awayAbbrev: 'PSG', matchTime: 'Mañana 21:00' },
-  { betCount: 8200, matchId: 'liv-mci', league: 'Premier', homeName: 'Liverpool', awayName: 'Manchester City', homeAbbrev: 'LIV', awayAbbrev: 'MCI', matchTime: 'Mañana 14:00' },
+  { status: 'live', betCount: 12000, matchId: 'psg-rma', league: 'Champions', homeName: 'Paris-Saint Germain', awayName: 'Real Madrid', homeAbbrev: 'PSG', awayAbbrev: 'RMA', matchTime: 'Hoy 18:00' },
+  { status: 'live', betCount: 8600, matchId: 'ars-rma', league: 'Champions', homeName: 'Arsenal', awayName: 'Real Madrid', homeAbbrev: 'ARS', awayAbbrev: 'RMA', matchTime: 'Hoy 20:00' },
+  { status: 'prematch', betCount: 9400, matchId: 'fcb-psg', league: 'Champions', homeName: 'Barcelona', awayName: 'Paris-Saint Germain', homeAbbrev: 'FCB', awayAbbrev: 'PSG', matchTime: 'Mañana 21:00' },
+  { status: 'live', betCount: 8200, matchId: 'liv-mci', league: 'Premier', homeName: 'Liverpool', awayName: 'Manchester City', homeAbbrev: 'LIV', awayAbbrev: 'MCI', matchTime: 'Mañana 14:00' },
 ];
 
 const PREMIER_MATCHES: MatchInfo[] = [
   MATCHES[3],
-  { betCount: 6400, matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
-  { betCount: 5100, matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
+  { status: 'live', betCount: 6400, matchId: 'ars-che', league: 'Premier', homeName: 'Arsenal', awayName: 'Chelsea', homeAbbrev: 'ARS', awayAbbrev: 'CHE', matchTime: 'Hoy 17:00' },
+  { status: 'prematch', betCount: 5100, matchId: 'mun-tot', league: 'Premier', homeName: 'Manchester United', awayName: 'Tottenham', homeAbbrev: 'MUN', awayAbbrev: 'TOT', matchTime: 'Mañana 19:00' },
 ];
 
 // Only the match fields carried by each Selection (league/full names live in MATCHES).
@@ -118,7 +123,7 @@ MOCK_PICKS.push(...PREMIER_MATCHES.slice(1).flatMap((m) =>
     odds: [1.75, 3.8, 2.75][i], ...matchOf(m),
   })),
 ));
-const FEATURED_MATCHES = [MATCHES[0], PREMIER_MATCHES[0]];
+const FEATURED_MATCHES = [MATCHES[0], MATCHES[2], PREMIER_MATCHES[0], PREMIER_MATCHES[2]];
 for (const m of FEATURED_MATCHES) {
   for (const market of ['Corners totales', 'Goles totales']) {
     for (const direction of ['↑', '↓']) MOCK_PICKS.push({
@@ -558,7 +563,7 @@ function MatchCard({
             className="flex h-[15px] min-w-5 items-center justify-center rounded-md bg-[rgba(251,251,251,0.16)] px-1 text-[10px] font-bold leading-[15px] text-[rgba(251,251,251,0.7)]"
             style={{ fontFamily: 'Red Hat Display, sans-serif' }}
           >
-            PA
+            {featuredLayout && match.status === 'live' ? 'LIVE' : 'PA'}
           </span>
           <span
             className="flex h-[15px] min-w-5 items-center justify-center rounded-md bg-[rgba(251,251,251,0.16)] px-1 text-[10px] font-bold leading-[15px] text-[rgba(251,251,251,0.7)]"
@@ -595,7 +600,7 @@ function MatchCard({
             className="whitespace-nowrap text-[12px] font-bold leading-[18px] text-[#fbfbfb]"
             style={{ fontFamily: 'Red Hat Display, sans-serif' }}
           >
-            {match.matchTime}
+            {featuredLayout && match.status === 'live' ? '1 : 0 · 18’' : match.matchTime}
           </p>
         </div>
         <div className="flex flex-1 flex-col items-center justify-end gap-0.5">
@@ -715,16 +720,18 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           <div className={`featured-team featured-team-${i}`} key={name}>
             <img src={shieldIcon} alt="" className="size-[42px]" />
             <span className="w-full truncate text-center text-xs leading-[18px] text-white/70">{name}</span>
-            <div className="flex items-center gap-1.5 text-xs leading-[18px] text-white/50">
+            {match.status === 'live' && <div className="flex items-center gap-1.5 text-xs leading-[18px] text-white/50">
               <span className="flex items-center gap-0.5"><img src={redCardIcon} alt="Tarjetas rojas" />{i ? 1 : 2}</span>
               <span className="flex items-center gap-0.5"><img src={cornerIcon} alt="Corners" />{i ? 7 : 4}</span>
-            </div>
+            </div>}
           </div>
         ))}
         <div className="featured-score">
           <FeaturedBetCount count={match.betCount} phase={phase} onEntranceComplete={onEntranceComplete} />
-          <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
-          <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />{match.matchTime.split(' ').slice(-1)[0]}</span>
+          {match.status === 'live' ? <>
+            <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
+            <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />18’</span>
+          </> : <div className="featured-kickoff"><span>{match.matchTime.split(' ')[0]}</span><b>{match.matchTime.split(' ').slice(1).join(' ')}</b></div>}
         </div>
       </div>
       <div className="featured-body">
@@ -761,17 +768,26 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
   );
 }
 
-function PersonalizedFeed(props: PromoCarouselProps) {
+function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps & { mode: MatchMode; onModeChange: (mode: MatchMode) => void }) {
+  const reduced = usePrefersReducedMotion();
   const sections = [
     { title: 'Champions', matches: MATCHES.slice(0, 3) },
     { title: 'Premier', matches: PREMIER_MATCHES },
-  ];
-  return <div className="personalized-feed">
+  ].map(section => ({ ...section, matches: section.matches.filter(match => match.status === mode) })).filter(section => section.matches.length > 0);
+  return <div className={`personalized-feed ${buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled ? 'personalized-feed-sticky' : ''}`}>
+    <div className="personalized-mode-toggle" role="group" aria-label="Estado de los partidos">
+      {(['live', 'prematch'] as const).map(value => <button type="button" key={value} aria-pressed={mode === value} onClick={() => onModeChange(value)}>
+        {mode === value && <motion.span className="personalized-mode-indicator" layoutId="personalized-mode-indicator" transition={{ duration: reduced ? 0 : buttonProgressionConfig.personalizedFeed.toggleMs / 1000, ease: buttonProgressionConfig.personalizedFeed.toggleEase }} />}
+        <span className="personalized-mode-icon">{value === 'live' ? <img src={liveIcon} alt="" /> : <img src={calendarIcon} alt="" />}</span>
+        <span>{value === 'live' ? 'Live' : 'Próximos'}</span>
+      </button>)}
+    </div>
+    {sections.length === 0 && <p className="text-center text-sm text-white/70" role="status">{mode === 'live' ? 'No hay partidos en vivo por ahora.' : 'No hay próximos partidos por ahora.'}</p>}
     {sections.map(({title, matches}) => <section key={title} aria-label={title}>
-      <h2 className="flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
-      <FeaturedMatch match={matches[0]} {...props} />
-      <p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
-      <PromoCarousel matches={matches.slice(1)} featuredLayout {...props} />
+      <h2 className="personalized-league-heading flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
+      <FeaturedMatch key={matches[0].matchId} match={matches[0]} {...props} />
+      {matches.length > 1 && <><p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
+      <PromoCarousel key={`${title}-${mode}`} matches={matches.slice(1)} featuredLayout {...props} /></>}
     </section>)}
   </div>;
 }
@@ -1176,8 +1192,25 @@ export function HomeScreenChrome({
   headerCollapsed = false,
 }: HomeScreenChromeProps) {
   const [activeLeague, setActiveLeague] = useState('todofut');
+  const [personalizedMode, setPersonalizedMode] = useState<MatchMode>('live');
+  const chromeRef = useRef<HTMLDivElement>(null);
+  const appHeaderRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled || !appHeaderRef.current) return;
+    const header = appHeaderRef.current;
+    const scrollViewport = chromeRef.current?.parentElement;
+    const measure = () => {
+      chromeRef.current?.style.setProperty('--personalized-header-height', `${header.getBoundingClientRect().height}px`);
+      if (scrollViewport) chromeRef.current?.style.setProperty('--personalized-viewport-height', `${scrollViewport.clientHeight}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    if (scrollViewport) observer.observe(scrollViewport);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <div className="flex w-full flex-col">
+    <div ref={chromeRef} className="flex w-full flex-col">
       {/* PINNED HEADER — ONE sticky surface holding the logo/balance bar, the
           leagues row, the match tabs and the pill markets. It's a SINGLE tier
           (not two) so the decorative glow can span behind ALL of it as one
@@ -1196,7 +1229,7 @@ export function HomeScreenChrome({
           On the desktop phone-mockup (min-[431px]) we add back the vertical
           space the old fake status bar occupied so the header clears the notch;
           real mobile relies on the device's own status bar for that inset. */}
-      <div className="sticky top-0 z-30 overflow-hidden bg-black min-[431px]:pt-11">
+      <div ref={appHeaderRef} className="sticky top-0 z-30 overflow-hidden bg-black min-[431px]:pt-11">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[100px]"
@@ -1222,7 +1255,7 @@ export function HomeScreenChrome({
         </div>
       </div>
 
-      {activeLeague === 'parati' && <PersonalizedFeed selectedIds={selectedIds} onTogglePick={onTogglePick} onLightningBet={onLightningBet} />}
+      {activeLeague === 'parati' && <PersonalizedFeed mode={personalizedMode} onModeChange={setPersonalizedMode} selectedIds={selectedIds} onTogglePick={onTogglePick} onLightningBet={onLightningBet} />}
       <div hidden={activeLeague === 'parati'}>
       <PromoCarousel
         selectedIds={selectedIds}

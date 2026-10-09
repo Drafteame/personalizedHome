@@ -1,5 +1,8 @@
 ## personalizedHome exploration (2026-10-08)
 
+- `HomeScreenChrome` owns the Para ti `personalizedMode` (`live` / `prematch`), default Live and retained across league-tab switches. `MatchInfo.status` filters both primary and secondary matches before selecting a primary; empty leagues are omitted. Próximos cards use scheduled kickoff instead of live scores. Prematch featured mocks share the existing pick registry and player placeholders.
+- Reversible experiment: `buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled` is enabled. Set it to `false` to restore normal section headings while retaining the toggle/filtering. A ResizeObserver on the existing app header writes `--personalized-header-height` on the chrome wrapper; section-scoped sticky headings use this live offset through collapse/expand. Styles live in the personalized feed section of `index.css`; headings have a pointer-free downward fade. Toggle icons are exact Figma exports `para-ti-live.svg` / `para-ti-calendar.svg` from node `2580:24399`.
+
 - Independent public repository: `Drafteame/personalizedHome`; source history retained from `Drafteame/success-floating-card` as `upstream`. Push only to `origin`.
 - Dev route: `http://localhost:5174/personalizedHome/`. Vite retains a repository subpath, now `/personalizedHome/`.
 - `HomeScreen.tsx` lifts league selection to `HomeScreenChrome`. `Para ti` uses the supplied `assets/paraTiIcon.png` and renders `PersonalizedFeed`: Champions and Premier, each with a `FeaturedMatch` and the existing `PromoCarousel` of other matches.

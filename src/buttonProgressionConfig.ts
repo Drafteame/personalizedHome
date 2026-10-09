@@ -8,6 +8,11 @@ import type { TierConfig } from './types';
  * intensity — add a NEW layer. Each individual effect must stay restrained.
  */
 export const buttonProgressionConfig = {
+  personalizedFeed: {
+    stickyLeagueHeadingsEnabled: true, // false restores normal section headings
+    toggleMs: 180,
+    toggleEase: [0.4, 0, 0.2, 1] as [number, number, number, number],
+  },
   // Para ti: independent of the bet-slip progression master switch.
   featuredMatch: {
     activationMs: 210, entranceMs: 600, holdMs: 1000, settleMs: 300,
