@@ -698,7 +698,7 @@ function PromoCarousel({
 }
 
 function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchInfo }) {
-  const { headerRef, phase, onEntranceComplete } = useFeaturedMatchSequence(match.matchId);
+  const { headerRef, phase, onEntranceComplete, onFlamesComplete } = useFeaturedMatchSequence(match.matchId);
   const hot = phase === 'flames' || phase === 'entrance' || phase === 'holding';
   const bindPick = useLongPress(props.onLightningBet, props.onTogglePick);
   const dragScroll = useHorizontalDragScroll();
@@ -710,7 +710,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
       <div aria-hidden className="featured-glow" />
       {phase !== 'default' && phase !== 'settled' && <div aria-hidden className="featured-glow featured-hot-glow" />}
       <div className="featured-header" ref={headerRef}>
-        <FeaturedMatchParticles phase={phase} />
+        <FeaturedMatchParticles phase={phase} onFlamesComplete={onFlamesComplete} />
         {[match.homeName, match.awayName].map((name, i) => (
           <div className={`featured-team featured-team-${i}`} key={name}>
             <img src={shieldIcon} alt="" className="size-[42px]" />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import flameIcon from './assets/paraTiIcon.png';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
@@ -8,14 +8,11 @@ const cfg = buttonProgressionConfig.featuredMatch;
 type Phase = 'default' | 'flames' | 'entrance' | 'holding' | 'settling' | 'settled';
 // Page-session timestamps prevent replay across tab unmounts.
 const starts = new Map<string, number>();
-// Handoff is tied to the slowest sampled particle, so no idle gap can appear
-// between the final flame fade and the count entrance.
-const flameEnd = cfg.activationMs + cfg.flames.delayMs[1] + cfg.flames.durationMs[1];
-const entranceEnd = flameEnd + cfg.entranceMs;
+const entranceEnd = cfg.entranceMs;
 const holdEnd = entranceEnd + cfg.holdMs;
 const sequenceEnd = holdEnd + cfg.settleMs;
 function phaseAt(elapsed: number): Phase {
-  return elapsed < flameEnd ? 'flames' : elapsed < entranceEnd ? 'entrance' : elapsed < holdEnd ? 'holding' : elapsed < sequenceEnd ? 'settling' : 'settled';
+  return elapsed < entranceEnd ? 'flames' : elapsed < holdEnd ? 'holding' : elapsed < sequenceEnd ? 'settling' : 'settled';
 }
 
 export function useFeaturedMatchSequence(matchId: string) {
@@ -35,7 +32,6 @@ export function useFeaturedMatchSequence(matchId: string) {
       if (!starts.has(matchId)) starts.set(matchId, Date.now());
       const elapsed = Date.now() - starts.get(matchId)!;
       setPhase(phaseAt(elapsed));
-      if (elapsed < flameEnd) timers.current.push(window.setTimeout(() => setPhase('entrance'), flameEnd - elapsed));
     };
     const observer = new IntersectionObserver(entries => {
       if (entries.some(entry => entry.isIntersecting)) {
@@ -53,6 +49,9 @@ export function useFeaturedMatchSequence(matchId: string) {
       if (starts.has(matchId)) starts.set(matchId, Date.now() - sequenceEnd);
     };
   }, [matchId, reduced]);
+  const onFlamesComplete = useCallback(() => {
+    if (phase === 'flames' && !reduced) setPhase('entrance');
+  }, [phase, reduced]);
   const onEntranceComplete = () => {
     if (phase !== 'entrance' || entranceComplete.current || reduced) return;
     entranceComplete.current = true;
@@ -63,7 +62,7 @@ export function useFeaturedMatchSequence(matchId: string) {
       timers.current.push(window.setTimeout(() => setPhase('settled'), cfg.settleMs));
     }, cfg.holdMs));
   };
-  return { headerRef, phase, onEntranceComplete };
+  return { headerRef, phase, onEntranceComplete, onFlamesComplete };
 }
 
 // Sample once for the mounted run; renders and phase changes never reroll particles.
@@ -77,8 +76,16 @@ function makeFlames() {
   }));
 }
 
-export function FeaturedMatchParticles({ phase }: { phase: Phase }) {
+export function FeaturedMatchParticles({ phase, onFlamesComplete }: { phase: Phase; onFlamesComplete: () => void }) {
   const [flames] = useState(makeFlames);
+  useEffect(() => {
+    if (phase !== 'flames') return;
+    // This deadline is derived from each sampled opacity animation, so the
+    // handoff lands on the final visible pixel rather than a separate buffer.
+    const lastOpacity = Math.max(...flames.map(f => cfg.activationMs + f.delay + f.duration));
+    const timer = window.setTimeout(onFlamesComplete, lastOpacity);
+    return () => window.clearTimeout(timer);
+  }, [flames, phase, onFlamesComplete]);
   if (phase !== 'flames' && phase !== 'entrance') return null;
   return <div className="featured-particles" aria-hidden>
     {phase === 'flames' ? flames.map(f =>
