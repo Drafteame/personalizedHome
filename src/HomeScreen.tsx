@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useFeaturedMatchSequence, FeaturedMatchParticles, FeaturedBetCount } from './FeaturedMatchMotion';
 import { buttonProgressionConfig } from './buttonProgressionConfig';
@@ -21,6 +21,11 @@ import rightChevronIcon from './assets/chevron_right.svg';
 import paraTiIcon from './assets/paraTiIcon.png';
 import liveIcon from './assets/para-ti-live.svg';
 import calendarIcon from './assets/para-ti-calendar.svg';
+import carouselLiveDot from './assets/carousel-live-dot.svg';
+import carouselLiveLight from './assets/carousel-live-light.svg';
+import prematchUp from './assets/featured-prematch-up.svg';
+import prematchDown from './assets/featured-prematch-down.svg';
+import prematchStat from './assets/featured-prematch-stat.svg';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 import { useHorizontalDragScroll } from './useHorizontalDragScroll';
 import type { Selection } from './types';
@@ -500,7 +505,7 @@ type PromoCarouselProps = {
 
 type BindPick = (id: string) => Record<string, unknown>;
 
-function PickButton({ p, label, selected, bindPick }: { p: Selection; label: string; selected: boolean; bindPick: BindPick }) {
+function PickButton({ p, label, selected, bindPick }: { p: Selection; label: ReactNode; selected: boolean; bindPick: BindPick }) {
   return (
     <button
       type="button"
@@ -555,6 +560,30 @@ function MatchCard({
       : i === 0
         ? match.homeAbbrev
         : match.awayAbbrev;
+
+  if (featuredLayout && match.status === 'live') return (
+    <div className="personalized-live-match-card">
+      <div className="personalized-live-match-header">
+        {[match.homeName, match.awayName].map((name, i) => <div className={`personalized-live-team personalized-live-team-${i}`} key={name}>
+          <img src={shieldIcon} alt="" width={44} height={44} />
+          <div className="personalized-live-team-info">
+          <p>{name}</p>
+          <div className="personalized-live-stats">
+            <span><img src={cornerIcon} alt="Corners" />4</span>
+            <span><img src={redCardIcon} alt="Tarjetas rojas" /><span>0</span></span>
+          </div>
+          </div>
+        </div>)}
+        <div className="personalized-live-score">
+          <div className="personalized-live-league"><span>{match.league}</span><span aria-hidden className="size-0.5 shrink-0 rounded-full bg-[rgba(251,251,251,0.5)]" /><span className="featured-badge">90’</span></div>
+          <div className="personalized-live-result"><strong>1</strong><span>:</span><strong>0</strong></div>
+          <div className="personalized-live-time"><span><img src={carouselLiveDot} alt="" /></span>18:00</div>
+        </div>
+      </div>
+      <div className="personalized-live-odds">{lines.map((p, i) => <PickButton key={p.id} p={p} label={labelFor(p, i)} selected={selectedIds.has(p.id)} bindPick={bindPick} />)}</div>
+      <div className="personalized-live-light" aria-hidden><img src={carouselLiveLight} alt="" /></div>
+    </div>
+  );
 
   const leagueTags = (
       <div className="flex w-full items-center justify-center gap-1 px-2.5">
@@ -721,9 +750,10 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
   const dragScroll = useHorizontalDragScroll();
   const picks = MOCK_PICKS.filter(p => p.matchId === match.matchId);
   const players = [...new Set(picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET).map(p => p.pick.split(' · ')[0]))];
-  const renderPick = (p: Selection, label: string) => <PickButton key={p.id} p={p} label={label} selected={props.selectedIds.has(p.id)} bindPick={bindPick} />;
+  const prematch = match.status === 'prematch';
+  const renderPick = (p: Selection, label: ReactNode) => <PickButton key={p.id} p={p} label={label} selected={props.selectedIds.has(p.id)} bindPick={bindPick} />;
   return (
-    <motion.article className="featured-match" data-phase={phase} initial={false} animate={{ "--heat": hot ? 1 : 0 }} transition={{ duration: (hot ? buttonProgressionConfig.featuredMatch.activationMs : buttonProgressionConfig.featuredMatch.settleMs) / 1000, ease: buttonProgressionConfig.featuredMatch.gradientEase }} aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
+    <motion.article className={`featured-match${prematch ? ' featured-match-prematch' : ''}`} data-phase={phase} initial={false} animate={{ "--heat": hot ? 1 : 0 }} transition={{ duration: (hot ? buttonProgressionConfig.featuredMatch.activationMs : buttonProgressionConfig.featuredMatch.settleMs) / 1000, ease: buttonProgressionConfig.featuredMatch.gradientEase }} aria-label={`Partido destacado: ${match.homeName} vs ${match.awayName}`}>
       <div aria-hidden className="featured-glow" />
       <div aria-hidden className="featured-glow featured-hot-glow" />
       <div className="featured-header" ref={headerRef}>
@@ -742,21 +772,21 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           <FeaturedBetCount count={match.betCount} phase={phase} onEntranceComplete={onEntranceComplete} />
           {match.status === 'live' ? <>
             <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
-            <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />18’</span>
-          </> : <div className="featured-kickoff"><span>{match.matchTime.split(' ')[0]}</span><b>{match.matchTime.split(' ').slice(1).join(' ')}</b></div>}
+            <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />18:00</span>
+          </> : <span className="featured-prematch-kickoff">{match.matchTime.replace(/\b(\d{2}:\d{2}):\d{2}\b/, '$1')}</span>}
         </div>
       </div>
       <div className="featured-body">
         <div aria-hidden className="featured-decoration" />
         <div className="featured-markets">
           <div>
-            <div className="featured-market-title">Money line <span className="featured-badge">90’</span></div>
+            <div className="featured-market-title">{prematch ? 'Money Line' : 'Money line'} {prematch && <span className="featured-badge">PA</span>}<span className="featured-badge">90’</span></div>
             <div className="flex gap-1">{picks.filter(p => p.market === 'Money line').map((p, i) => renderPick(p, i === 1 ? 'EMPATE' : i === 0 ? match.homeAbbrev : match.awayAbbrev))}</div>
           </div>
           <div className="flex gap-2.5">
             {['Corners totales', 'Goles totales'].map(market => <div className="min-w-0 flex-1" key={market}>
               <div className="featured-market-title">{market}</div>
-              <div className="flex gap-1">{picks.filter(p => p.market === market).map((p, i) => renderPick(p, `${i ? '↓' : '↑'} ${market === 'Corners totales' ? '9.5' : '2.5'}`))}</div>
+              <div className="flex gap-1">{picks.filter(p => p.market === market).map((p, i) => renderPick(p, prematch ? <span className="featured-prematch-line"><span><img src={i ? prematchDown : prematchUp} alt={i ? 'Menos de' : 'Más de'} /></span>{market === 'Corners totales' ? '9.5' : '2.5'}</span> : `${i ? '↓' : '↑'} ${market === 'Corners totales' ? '9.5' : '2.5'}`))}</div>
             </div>)}
           </div>
         </div>
@@ -768,6 +798,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           {players.map(name => {
             const lines = picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET && p.pick.startsWith(`${name} · `));
             return <div className="featured-player" key={name}>
+              {prematch && <span className="featured-prematch-stat" aria-hidden><img src={prematchStat} alt="" /></span>}
               <span className="featured-player-team text-[10px] leading-[15px] text-white/50">{name === 'Vinicius' || name === 'Haaland' || name === 'Foden' ? match.awayAbbrev : match.homeAbbrev}</span>
               <PlayerProfile p={{ ...lines[0], pick: name }} compact />
               <div className="featured-market-title">Tiros al arco <span className="featured-badge italic">B+</span></div>

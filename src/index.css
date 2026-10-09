@@ -494,6 +494,42 @@ body {
 .personalized-match-card > div:first-child > div:nth-child(2) > div:first-child p { font-size: 10px; line-height: 15px; }
 .personalized-match-card > div:first-child > div:nth-child(2) > div:first-child > div:first-child > span { display: none; }
 
+/* Figma 2630:295784: only Para ti's Live carousel cards. */
+.personalized-live-match-card { position: relative; width: 100%; overflow: hidden; border-radius: 20px; background: #000; box-shadow: inset 0 0 0 1px rgba(251,251,251,.16); padding-top: 10px; font-weight: 500; backdrop-filter: blur(10.15px); }
+.personalized-live-match-header { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 0 10px 6px; }
+.personalized-live-team { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.personalized-live-team-1 { grid-column: 3; }
+.personalized-live-team-info { width: 100%; }
+.personalized-live-team p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; color: rgba(251,251,251,.7); font-size: 12px; font-weight: 500; line-height: 18px; }
+.personalized-live-stats { display: flex; justify-content: center; gap: 6px; color: rgba(251,251,251,.5); font-size: 12px; line-height: 18px; }
+.personalized-live-stats > span { display: flex; align-items: center; gap: 2px; }
+.personalized-live-stats > span:last-child > span { color: rgba(251,251,251,.32); }
+.personalized-live-team-1 .personalized-live-stats { flex-direction: row-reverse; }
+.personalized-live-score { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 4px; }
+.personalized-live-league { display: flex; align-items: center; gap: 4px; font-size: 10px; line-height: 15px; color: rgba(251,251,251,.5); }
+.personalized-live-league > span:first-child { text-transform: uppercase; }
+.personalized-live-result { display: flex; align-items: center; gap: 8px; height: 27px; font-size: 14px; line-height: 21px; }
+.personalized-live-result strong { font-size: 22px; font-weight: 900; line-height: 33px; background: linear-gradient(#fbfbfb 51.389%, transparent 93.056%); background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 4px 12px rgba(0,0,0,.32); }
+.personalized-live-time { display: flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; line-height: 18px; }
+.personalized-live-time > span { display: flex; width: 14px; height: 14px; align-items: center; justify-content: center; }
+.personalized-live-odds { display: flex; gap: 4px; padding: 0 10px 10px; }
+.personalized-live-match-header, .personalized-live-odds { position: relative; z-index: 1; }
+.personalized-live-light { position: absolute; left: 10.5px; right: 9.5px; top: -36.11px; height: 44px; pointer-events: none; }
+.personalized-live-light img { position: absolute; left: 50%; top: -56px; max-width: none; transform: translateX(-50%); }
+
+/* Figma 2588:79092: only primary Prematch featured cards. */
+.featured-match-prematch .featured-header { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; min-height: 64px; }
+.featured-match-prematch .featured-score { padding: 20px 8px 0; }
+.featured-match-prematch .featured-bet-count { top: 10px; }
+.featured-match-prematch .featured-body { margin-top: 4px; border-bottom-width: 0; }
+.featured-match-prematch .featured-team > span, .featured-match-prematch .featured-market-title { font-weight: 500; }
+.featured-prematch-kickoff { font-size: 12px; font-weight: 700; line-height: 18px; white-space: nowrap; }
+.featured-prematch-line { display: flex; align-items: center; justify-content: center; gap: 2px; }
+.featured-prematch-line > span { position: relative; width: 10px; height: 10px; }
+.featured-prematch-line img { position: absolute; top: 0; left: 0; max-width: none; transform: scale(.5); transform-origin: top left; }
+.featured-prematch-stat { position: absolute; top: 0; left: 0; z-index: 3; pointer-events: none; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: rgba(251,251,251,.12); backdrop-filter: blur(4px); }
+.featured-match-prematch .featured-player > .featured-market-title { margin-bottom: 0; }
+
 /* Fade only the artwork; offer content stays fully opaque. */
 .featured-decoration {
   position: absolute;
