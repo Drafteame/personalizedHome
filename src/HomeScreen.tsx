@@ -800,10 +800,12 @@ function PersonalizedFeed({ mode, onModeChange, ...props }: PromoCarouselProps &
     {sections.length === 0 && <p className="text-center text-sm text-white/70" role="status">{mode === 'live' ? 'No hay partidos en vivo por ahora.' : 'No hay próximos partidos por ahora.'}</p>}
     {sections.map(({title, matches}) => <section key={title} aria-label={title}>
       <span className="personalized-heading-anchor" aria-hidden />
-      <h2 className="personalized-league-heading flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]">{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
+      <h2 className="personalized-league-heading flex h-8 items-center gap-0.5 text-sm font-bold leading-[21px]"><span className="personalized-heading-light" aria-hidden />{title}<img src={rightChevronIcon} alt="" className="size-3.5" /></h2>
+      <div className="personalized-heading-content">
       <FeaturedMatch key={matches[0].matchId} match={matches[0]} {...props} />
       {matches.length > 1 && <><p className="mt-4 text-xs leading-[18px] text-white/70">Otros partidos destacados</p>
       <PromoCarousel key={`${title}-${mode}`} matches={matches.slice(1)} featuredLayout {...props} /></>}
+      </div>
     </section>)}
     </div>
   </div>;
@@ -1215,12 +1217,23 @@ export function HomeScreenChrome({
   useEffect(() => {
     if (!buttonProgressionConfig.personalizedFeed.stickyLeagueHeadingsEnabled || !appHeaderRef.current) return;
     const header = appHeaderRef.current;
+    const scrollViewport = chromeRef.current?.parentElement;
     let headingObserver: IntersectionObserver | undefined;
+    let fadeFrame = 0;
+    const updateFade = () => {
+      const fades = [...(chromeRef.current?.querySelectorAll<HTMLElement>('.personalized-heading-content') ?? [])].map(content => ({
+        content,
+        boundary: content.previousElementSibling!.getBoundingClientRect().bottom - content.getBoundingClientRect().top,
+      }));
+      for (const { content, boundary } of fades) content.style.setProperty('--heading-fade-boundary', `${boundary}px`);
+    };
+    const scheduleFade = () => { if (!fadeFrame) fadeFrame = requestAnimationFrame(() => { fadeFrame = 0; updateFade(); }); };
     const measure = () => {
       const height = header.getBoundingClientRect().height;
       chromeRef.current?.style.setProperty('--personalized-header-height', `${height}px`);
+      updateFade();
       headingObserver?.disconnect();
-      // Only paint the sticky backdrop after the title pins. Its normal-flow
+      // Only paint the gradient continuation after the title pins. Its normal-flow
       // position must leave the original raised BETS presentation unobscured.
       headingObserver = new IntersectionObserver(entries => {
         for (const entry of entries) {
@@ -1233,7 +1246,8 @@ export function HomeScreenChrome({
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(header);
-    return () => { observer.disconnect(); headingObserver?.disconnect(); };
+    scrollViewport?.addEventListener('scroll', scheduleFade, { passive: true });
+    return () => { observer.disconnect(); headingObserver?.disconnect(); scrollViewport?.removeEventListener('scroll', scheduleFade); cancelAnimationFrame(fadeFrame); };
   }, [activeLeague, personalizedMode]);
   return (
     <div ref={chromeRef} className="flex w-full flex-col">
