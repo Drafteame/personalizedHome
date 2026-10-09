@@ -698,8 +698,8 @@ function PromoCarousel({
 }
 
 function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchInfo }) {
-  const { headerRef, phase } = useFeaturedMatchSequence(match.matchId);
-  const hot = phase === 'flames' || phase === 'entrance';
+  const { headerRef, phase, onEntranceComplete } = useFeaturedMatchSequence(match.matchId);
+  const hot = phase === 'flames' || phase === 'entrance' || phase === 'holding';
   const bindPick = useLongPress(props.onLightningBet, props.onTogglePick);
   const dragScroll = useHorizontalDragScroll();
   const picks = MOCK_PICKS.filter(p => p.matchId === match.matchId);
@@ -722,7 +722,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
           </div>
         ))}
         <div className="featured-score">
-          <FeaturedBetCount count={match.betCount} phase={phase} />
+          <FeaturedBetCount count={match.betCount} phase={phase} onEntranceComplete={onEntranceComplete} />
           <div className="flex items-center gap-3"><strong>1</strong><span className="text-sm">:</span><strong>0</strong></div>
           <span className="flex items-center gap-1 text-xs font-bold leading-[18px]"><span className="size-1.5 rounded-full bg-[#ff416c]" />{match.matchTime.split(' ').slice(-1)[0]}</span>
         </div>
@@ -731,7 +731,7 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
         <div aria-hidden className="featured-decoration" />
         <div className="featured-markets">
           <div>
-            <div className="featured-market-title">Ganador <span className="featured-badge">90’</span></div>
+            <div className="featured-market-title">Money line <span className="featured-badge">90’</span></div>
             <div className="flex gap-1">{picks.filter(p => p.market === 'Money line').map((p, i) => renderPick(p, i === 1 ? 'EMPATE' : i === 0 ? match.homeAbbrev : match.awayAbbrev))}</div>
           </div>
           <div className="flex gap-2.5">
@@ -741,14 +741,18 @@ function FeaturedMatch({ match, ...props }: PromoCarouselProps & { match: MatchI
             </div>)}
           </div>
         </div>
-        <div {...dragScroll} className="featured-players no-scrollbar" role="region" aria-label="Jugadores destacados" tabIndex={0}>
+        <div {...dragScroll} onPointerDownCapture={e => {
+          // Native inner-strip scrolling and pick presses must not drag the outer carousel.
+          if ((e.target as HTMLElement).closest('.featured-player-odds')) return;
+          dragScroll.onPointerDownCapture(e);
+        }} className="featured-players no-scrollbar" role="region" aria-label="Jugadores destacados" tabIndex={0}>
           {players.map(name => {
             const lines = picks.filter(p => p.id.startsWith('featured-') && p.market === SHOTS_MARKET && p.pick.startsWith(`${name} · `));
             return <div className="featured-player" key={name}>
-              <span className="absolute right-0 top-0 text-[10px] leading-[15px] text-white/50">{name === 'Vinicius' || name === 'Haaland' || name === 'Foden' ? match.awayAbbrev : match.homeAbbrev}</span>
+              <span className="featured-player-team text-[10px] leading-[15px] text-white/50">{name === 'Vinicius' || name === 'Haaland' || name === 'Foden' ? match.awayAbbrev : match.homeAbbrev}</span>
               <PlayerProfile p={{ ...lines[0], pick: name }} compact />
               <div className="featured-market-title">Tiros al arco <span className="featured-badge italic">B+</span></div>
-              <div className="featured-player-odds no-scrollbar" tabIndex={0} aria-label={`Líneas de ${name}`}>{lines.map((p, i) => renderPick(p, `${i + 1}.0+`))}</div>
+              <div className="featured-player-controls"><div className="featured-player-odds no-scrollbar" tabIndex={0} aria-label={`Líneas de ${name}`}>{lines.map((p, i) => renderPick(p, `${i + 1}.0+`))}</div></div>
             </div>;
           })}
         </div>

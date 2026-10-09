@@ -463,8 +463,13 @@ body {
 .featured-badge { background: rgba(251,251,251,.16); border-radius: 6px; padding: 0 4px; font-size: 10px; line-height: 15px; font-weight: 700; }
 .featured-players { display: flex; gap: 8px; overflow-x: auto; margin: 16px 5px -4px; padding: 4px; scroll-padding-inline: 4px; scroll-snap-type: x mandatory; }
 .featured-player { position: relative; width: 152px; flex-shrink: 0; padding-right: 8px; border-right: 1px solid rgba(251,251,251,.16); background: black; scroll-snap-align: start; }
-.featured-player-odds { display: flex; gap: 4px; overflow-x: auto; margin-top: 6px; }
-.featured-player-odds button { flex: 0 0 58px; }
+.featured-player-team { position: absolute; top: 0; right: 8px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.featured-player-controls { position: relative; margin-top: 6px; }
+.featured-player-controls::before, .featured-player-controls::after { content: ''; position: absolute; z-index: 1; top: 0; bottom: 0; width: 12px; pointer-events: none; }
+.featured-player-controls::before { left: 0; background: linear-gradient(to right, black, transparent); }
+.featured-player-controls::after { right: 0; background: linear-gradient(to left, black, transparent); }
+.featured-player-odds { display: flex; gap: 4px; overflow-x: auto; padding-inline: calc(50% - 29px); scroll-snap-type: x mandatory; }
+.featured-player-odds button { flex: 0 0 58px; scroll-snap-align: center; }
 .personalized-feed > section > div:last-child { padding-top: 8px; padding-bottom: 0; }
 .personalized-feed > section > div:last-child > div:first-child { padding-left: 0; padding-right: 0; }
 .personalized-feed > section > div:last-child > div:first-child > div { width: min(350px, 100%); }
@@ -498,6 +503,7 @@ body {
 .featured-decoration::before { opacity: calc(.4 * (1 - var(--heat))); }
 .featured-match[data-phase="flames"] .featured-decoration::after,
 .featured-match[data-phase="entrance"] .featured-decoration::after,
+.featured-match[data-phase="holding"] .featured-decoration::after,
 .featured-match[data-phase="settling"] .featured-decoration::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: linear-gradient(110deg,#ff52ba,#ffa901); opacity: calc(.4 * var(--heat)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
 .featured-header { position: relative; isolation: isolate; }
 .featured-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
